@@ -14,5 +14,6 @@ Decisiones técnicas clave detrás de AstraDNS, documentadas por transparencia y
 | [006](adr-006.md) | Enriquecimiento de Namespace | Aceptado | Aceptar limitación en MVP; pod informer post-MVP |
 | [007](adr-007.md) | Estrategia de Registro de Consultas | Aceptado | Registro estructurado a nivel de agent con muestreo |
 | [008](adr-008.md) | Estrategia Multi-Motor | Aceptado | Interfaz desde el día 1; solo Unbound en MVP |
+| [009](adr-009.md) | Perfiles de Topología del Agent | Aceptado | Dos perfiles (node-local, central) para trade-off costo vs latencia |
 
 Los ADRs de origen viven en `astradns-docs/adrs/` y se publican aquí como páginas versionadas.

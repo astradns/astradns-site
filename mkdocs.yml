@@ -71,6 +71,7 @@ plugins:
                 - Helm Configuration: guides/helm-configuration.md
                 - CoreDNS Integration: guides/coredns-integration.md
                 - Production Deployment: guides/production-deployment.md
+                - Topology Profiles: guides/topology-profiles.md
             - Reference:
                 - CRDs:
                     - Overview: reference/crds/index.md
@@ -95,6 +96,7 @@ plugins:
                 - ADR-006 Namespace Enrichment: decisions/adr-006.md
                 - ADR-007 Query Logging Strategy: decisions/adr-007.md
                 - ADR-008 Multi-Engine Strategy: decisions/adr-008.md
+                - ADR-009 Agent Topology Profiles: decisions/adr-009.md
             - Contributing:
                 - Development: contributing/index.md
                 - Release Process: contributing/release-process.md
@@ -116,6 +118,7 @@ plugins:
                 - Configuração Helm: guides/helm-configuration.md
                 - Integração CoreDNS: guides/coredns-integration.md
                 - Deploy em Produção: guides/production-deployment.md
+                - Perfis de Topologia: guides/topology-profiles.md
             - Referência:
                 - CRDs:
                     - Visão Geral: reference/crds/index.md
@@ -140,6 +143,7 @@ plugins:
                 - ADR-006 Enriquecimento de Namespace: decisions/adr-006.md
                 - ADR-007 Estratégia de Logging de Consultas: decisions/adr-007.md
                 - ADR-008 Estratégia Multi-Engine: decisions/adr-008.md
+                - ADR-009 Perfis de Topologia do Agent: decisions/adr-009.md
             - Contribuindo:
                 - Desenvolvimento: contributing/index.md
                 - Processo de Release: contributing/release-process.md
@@ -161,6 +165,7 @@ plugins:
                 - Configuración Helm: guides/helm-configuration.md
                 - Integración CoreDNS: guides/coredns-integration.md
                 - Despliegue en Producción: guides/production-deployment.md
+                - Perfiles de Topología: guides/topology-profiles.md
             - Referencia:
                 - CRDs:
                     - Descripción General: reference/crds/index.md
@@ -185,6 +190,7 @@ plugins:
                 - ADR-006 Enriquecimiento de Namespace: decisions/adr-006.md
                 - ADR-007 Estrategia de Registro de Consultas: decisions/adr-007.md
                 - ADR-008 Estrategia Multi-Motor: decisions/adr-008.md
+                - ADR-009 Perfiles de Topología del Agent: decisions/adr-009.md
             - Contribuir:
                 - Desarrollo: contributing/index.md
                 - Proceso de Release: contributing/release-process.md
