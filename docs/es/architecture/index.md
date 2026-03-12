@@ -16,29 +16,29 @@ AstraDNS introduce dos componentes:
 
 ```mermaid
 graph TB
-    subgraph "Control Plane"
+    subgraph "Plano de Control"
         CRDs[CRDs<br/>DNSUpstreamPool<br/>DNSCacheProfile<br/>ExternalDNSPolicy]
         Operator[AstraDNS Operator<br/>Deployment]
         CM[ConfigMap<br/>config.json]
     end
 
-    subgraph "Data Plane (per node)"
+    subgraph "Plano de Datos (por nodo)"
         Agent[AstraDNS Agent<br/>DaemonSet]
-        Engine[DNS Engine<br/>Unbound / CoreDNS / PowerDNS]
-        Proxy[DNS Proxy<br/>:5353]
-        Metrics[Metrics<br/>:9153]
-        Health[Health<br/>:8080]
+        Engine[Motor DNS<br/>Unbound / CoreDNS / PowerDNS]
+        Proxy[Proxy DNS<br/>:5353]
+        Metrics[Métricas<br/>:9153]
+        Health[Salud<br/>:8080]
     end
 
-    CRDs -->|watch| Operator
-    Operator -->|render config| CM
+    CRDs -->|observa| Operator
+    Operator -->|renderiza configuración| CM
     CM -->|hot-reload| Agent
     Agent --> Proxy
     Agent --> Engine
     Agent --> Metrics
     Agent --> Health
-    Proxy -->|forward| Engine
-    Engine -->|resolve| Internet[Upstream Resolvers]
+    Proxy -->|reenvía| Engine
+    Engine -->|resuelve| Internet[Resolvers upstream]
 ```
 
 ### Plano de Control: Operator

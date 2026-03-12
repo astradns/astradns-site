@@ -1,0 +1,65 @@
+name: i18n Lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  ptbr-accent-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PT-BR accents
+        run: |
+          set -euo pipefail
+
+          failures=0
+
+          check_tokens() {
+            local file="$1"
+            shift
+            for token in "$@"; do
+              if grep -n -E "${token}" "${file}"; then
+                echo "Found unaccented token '${token}' in ${file}"
+                failures=1
+              fi
+            done
+          }
+
+          check_tokens docs/pt-BR/index.md \
+            "seguranca|Seguranca" \
+            "resolucao|Resolucao" \
+            "servicos|Servicos" \
+            "metricas|Metricas" \
+            "configuracao|Configuracao" \
+            "Inicio Rapido"
+
+          check_tokens docs/pt-BR/operations/slo.md \
+            "Validacao|validacao" \
+            "Nivel|nivel" \
+            "Servico|servico" \
+            "instalacao|Instalacao" \
+            "latencia|Latencia" \
+            "apos|Apos" \
+            "recuperacao|Recuperacao" \
+            "prontidao|Prontidao"
+
+          check_tokens docs/pt-BR/decisions/index.md \
+            "Decisoes|decisoes" \
+            "Indice|indice" \
+            "Interceptacao|interceptacao" \
+            "Politica|politica" \
+            "Metricas|metricas" \
+            "Estrategia|estrategia" \
+            "limitacao|Limitacao"
+
+          if [[ "${failures}" -ne 0 ]]; then
+            echo "PT-BR accent lint failed"
+            exit 1
+          fi
+
+          echo "PT-BR accent lint passed"

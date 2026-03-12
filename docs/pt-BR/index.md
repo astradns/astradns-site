@@ -5,13 +5,13 @@ hide:
 
 # AstraDNS
 
-**Visibilidade, seguranca e controle de custos sobre DNS externo no Kubernetes.**
+**Visibilidade, segurança e controle de custos sobre DNS externo no Kubernetes.**
 
 ---
 
-Clusters Kubernetes fazem milhares de consultas DNS externas a cada minuto -- para registros de pacotes, APIs SaaS, bancos de dados e servicos de terceiros. Hoje, essas consultas saem do cluster com **zero visibilidade**, **nenhum controle de seguranca** e **nenhum cache**.
+Clusters Kubernetes fazem milhares de consultas DNS externas a cada minuto -- para registros de pacotes, APIs SaaS, bancos de dados e serviços de terceiros. Hoje, essas consultas saem do cluster com **zero visibilidade**, **nenhum controle de segurança** e **nenhum cache**.
 
-O AstraDNS implanta um plano de resolucao DNS gerenciado em cada no, dando as equipes de plataforma controle total sobre a resolucao DNS externa.
+O AstraDNS implanta um plano de resolução DNS gerenciado em cada nó, dando às equipes de plataforma controle total sobre a resolução DNS externa.
 
 <div class="grid cards" markdown>
 
@@ -19,25 +19,25 @@ O AstraDNS implanta um plano de resolucao DNS gerenciado em cada no, dando as eq
 
     ---
 
-    Metricas por no, logs de consulta estruturados e dashboards Grafana. Saiba exatamente o que suas cargas de trabalho estao resolvendo, com que velocidade e onde ocorrem as falhas.
+    Métricas por nó, logs de consulta estruturados e dashboards Grafana. Saiba exatamente o que suas cargas de trabalho estão resolvendo, com que velocidade e onde ocorrem as falhas.
 
--   :material-shield-check:{ .lg .middle } **Seguranca**
-
-    ---
-
-    Politicas DNS com escopo por namespace, listas de dominios permitidos/bloqueados e deteccao de anomalias. Controle quais cargas de trabalho podem resolver quais dominios.
-
--   :material-currency-usd:{ .lg .middle } **Otimizacao de Custos**
+-   :material-shield-check:{ .lg .middle } **Segurança**
 
     ---
 
-    Cache inteligente com TTLs configuraveis e prefetch. Reduza o trafego DNS de saida em 40-70% com taxas de acerto de cache mensuraveis.
+    Políticas DNS com escopo por namespace, listas de domínios permitidos/bloqueados e detecção de anomalias. Controle quais cargas de trabalho podem resolver quais domínios.
+
+-   :material-currency-usd:{ .lg .middle } **Otimização de Custos**
+
+    ---
+
+    Cache inteligente com TTLs configuráveis e prefetch. Reduza o tráfego DNS de saída em 40-70% com taxas de acerto de cache mensuráveis.
 
 -   :material-kubernetes:{ .lg .middle } **Nativo do Kubernetes**
 
     ---
 
-    Totalmente declarativo via CRDs. Instale com um unico `helm install`, configure com YAML. Sem sidecars, sem regras iptables, sem alteracoes no codigo.
+    Totalmente declarativo via CRDs. Instale com um único `helm install`, configure com YAML. Sem sidecars, sem regras iptables, sem alterações no código.
 
 </div>
 
@@ -53,11 +53,11 @@ graph LR
     ConfigMap -->|hot-reload| Agent
 ```
 
-1. O **Operator** observa CRDs (`DNSUpstreamPool`, `DNSCacheProfile`, `ExternalDNSPolicy`) e renderiza a configuracao do engine em um ConfigMap.
-2. O **Agent** executa como um DaemonSet em cada no, encaminhando consultas DNS atraves de um engine DNS plugavel (Unbound, CoreDNS ou PowerDNS).
-3. Cada consulta e registrada, medida e verificada -- sem tocar no codigo da sua aplicacao.
+1. O **Operator** observa CRDs (`DNSUpstreamPool`, `DNSCacheProfile`, `ExternalDNSPolicy`) e renderiza a configuração do engine em um ConfigMap.
+2. O **Agent** executa como um DaemonSet em cada nó, encaminhando consultas DNS através de um engine DNS plugável (Unbound, CoreDNS ou PowerDNS).
+3. Cada consulta é registrada, medida e verificada -- sem tocar no código da sua aplicação.
 
-## Inicio Rapido
+## Início Rápido
 
 ```bash
 helm install astradns deploy/helm/astradns \

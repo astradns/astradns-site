@@ -87,6 +87,14 @@ plugins:
                 - Upgrade Guide: operations/upgrade-guide.md
             - Decisions:
                 - Overview: decisions/index.md
+                - ADR-001 Data Path Interception: decisions/adr-001.md
+                - ADR-002 Policy Scope in MVP: decisions/adr-002.md
+                - ADR-003 Metrics Model: decisions/adr-003.md
+                - ADR-004 Failover Strategy: decisions/adr-004.md
+                - ADR-005 Naming and Positioning: decisions/adr-005.md
+                - ADR-006 Namespace Enrichment: decisions/adr-006.md
+                - ADR-007 Query Logging Strategy: decisions/adr-007.md
+                - ADR-008 Multi-Engine Strategy: decisions/adr-008.md
             - Contributing:
                 - Development: contributing/index.md
                 - Release Process: contributing/release-process.md
@@ -124,6 +132,14 @@ plugins:
                 - Guia de Atualização: operations/upgrade-guide.md
             - Decisões:
                 - Visão Geral: decisions/index.md
+                - ADR-001 Interceptação do Caminho de Dados: decisions/adr-001.md
+                - ADR-002 Escopo de Política no MVP: decisions/adr-002.md
+                - ADR-003 Modelo de Métricas: decisions/adr-003.md
+                - ADR-004 Estratégia de Failover: decisions/adr-004.md
+                - ADR-005 Nomenclatura e Posicionamento: decisions/adr-005.md
+                - ADR-006 Enriquecimento de Namespace: decisions/adr-006.md
+                - ADR-007 Estratégia de Logging de Consultas: decisions/adr-007.md
+                - ADR-008 Estratégia Multi-Engine: decisions/adr-008.md
             - Contribuindo:
                 - Desenvolvimento: contributing/index.md
                 - Processo de Release: contributing/release-process.md
@@ -161,6 +177,14 @@ plugins:
                 - Guía de Actualización: operations/upgrade-guide.md
             - Decisiones:
                 - Descripción General: decisions/index.md
+                - ADR-001 Intercepción de la Ruta de Datos: decisions/adr-001.md
+                - ADR-002 Alcance de Políticas en MVP: decisions/adr-002.md
+                - ADR-003 Modelo de Métricas: decisions/adr-003.md
+                - ADR-004 Estrategia de Failover: decisions/adr-004.md
+                - ADR-005 Nombre y Posicionamiento: decisions/adr-005.md
+                - ADR-006 Enriquecimiento de Namespace: decisions/adr-006.md
+                - ADR-007 Estrategia de Registro de Consultas: decisions/adr-007.md
+                - ADR-008 Estrategia Multi-Motor: decisions/adr-008.md
             - Contribuir:
                 - Desarrollo: contributing/index.md
                 - Proceso de Release: contributing/release-process.md
