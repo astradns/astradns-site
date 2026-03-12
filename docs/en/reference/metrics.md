@@ -12,6 +12,7 @@ AstraDNS exposes Prometheus metrics on the agent's `:9153/metrics` endpoint.
 | `astradns_queries_by_type` | Counter | `qtype` | Queries by DNS record type (A, AAAA, CNAME, MX, TXT, SRV, SOA, NS, PTR, CAA, HTTPS, SVCB, DNSKEY, DS, RRSIG, or OTHER) |
 | `astradns_nxdomain_total` | Counter | — | Total NXDOMAIN responses |
 | `astradns_servfail_total` | Counter | — | Total SERVFAIL responses |
+| `astradns_denied_queries_total` | Counter | — | Queries denied by domain filter rules |
 
 ### Cache Metrics
 
@@ -76,6 +77,12 @@ astradns_upstream_healthy == 0
 
 ```promql
 rate(astradns_servfail_total[5m]) / rate(astradns_queries_total[5m])
+```
+
+### Denied Query Rate
+
+```promql
+rate(astradns_denied_queries_total[5m])
 ```
 
 ### Config Reload Failures

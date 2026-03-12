@@ -25,7 +25,7 @@ AstraDNS deploys a managed DNS resolver plane on every node, giving platform tea
 
     ---
 
-    Namespace-scoped DNS policies, domain allow/deny lists, and anomaly detection. Control which workloads can resolve which domains.
+    Global domain allow/deny lists with wildcard patterns, configurable deny action (REFUSED or NXDOMAIN), and hot-reloadable rules via CRD. Control which domains your cluster can resolve.
 
 -   :material-currency-usd:{ .lg .middle } **Cost Optimization**
 
