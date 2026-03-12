@@ -1,108 +1,150 @@
-# Integracao com CoreDNS
+# Integração com CoreDNS
 
-O AstraDNS se integra com o CoreDNS do cluster para interceptar consultas DNS externas. Este guia explica como a integracao funciona e como configura-la.
+Este guia explica como o AstraDNS altera o CoreDNS para encaminhar consultas externas pelo Agent, com comportamento diferente para os perfis `node-local` e `central`.
 
-## Como Funciona
+---
 
-Quando `coredns.integration.enabled=true`, o chart Helm cria um Job pos-instalacao que:
+## Como funciona
 
-1. Cria RBAC (ServiceAccount, Role, RoleBinding) em `kube-system`
-2. Le o ConfigMap atual do CoreDNS
-3. Faz backup do Corefile original em um novo ConfigMap
-4. Adiciona uma diretiva `forward` que roteia consultas nao pertencentes ao cluster para o AstraDNS
-5. Reinicia o deployment do CoreDNS para aplicar a alteracao
+Quando `clusterDNS.forwardExternalToAstraDNS.enabled=true`, o chart cria um Job pós-install/pós-upgrade que:
 
-### Antes da Integracao
+1. lê o `Corefile` atual do ConfigMap do CoreDNS;
+2. cria backup em `Corefile.astradns.backup`;
+3. substitui a diretiva `forward` para apontar ao AstraDNS;
+4. opcionalmente reinicia o deployment do CoreDNS.
 
-```
-.:53 {
-    kubernetes cluster.local in-addr.arpa ip6.arpa {
-        pods insecure
-        fallthrough in-addr.arpa ip6.arpa
-    }
-    forward . /etc/resolv.conf
-    cache 30
-    loop
-    reload
-    loadbalance
-}
-```
+---
 
-### Apos a Integracao
+## Configuração por perfil
 
-```
-.:53 {
-    kubernetes cluster.local in-addr.arpa ip6.arpa {
-        pods insecure
-        fallthrough in-addr.arpa ip6.arpa
-    }
-    forward . 169.254.20.11           # <-- AstraDNS agent
-    cache 30
-    loop
-    reload
-    loadbalance
-}
-```
-
-## Configuracao
-
-### Habilitar via Helm
+### node-local
 
 ```yaml
 agent:
+  topology:
+    profile: node-local
   network:
-    mode: linkLocal                   # Necessario para integracao com CoreDNS
+    mode: linkLocal
     linkLocalIP: 169.254.20.11
 
-coredns:
-  integration:
+clusterDNS:
+  forwardExternalToAstraDNS:
     enabled: true
+    namespace: kube-system
+    configMapName: coredns
+    rolloutDeployment: coredns
+    forwardTarget: 169.254.20.11:5353
+    fallbackUpstream: /etc/resolv.conf
 ```
 
-### Modo de Rede Necessario
+### central com ClusterIP fixo
 
-A integracao com o CoreDNS requer o modo de rede `linkLocal`. O agent se conecta a `169.254.20.11:53` em cada no, fornecendo um endereco consistente para o encaminhamento do CoreDNS.
+```yaml
+agent:
+  topology:
+    profile: central
+  deployment:
+    replicas: 3
+  dnsService:
+    type: ClusterIP
+    clusterIP: 10.96.0.53
+    port: 53
 
-!!! warning
-    O uso do modo `hostPort` com a integracao CoreDNS nao e suportado porque o CoreDNS precisaria saber o endereco IP de cada no, que varia ao longo do cluster.
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
+    namespace: kube-system
+    configMapName: coredns
+    rolloutDeployment: coredns
+    fallbackUpstream: /etc/resolv.conf
+```
 
-## Verificacao
+### central com descoberta automática de Service IP
 
-Apos a instalacao, verifique a integracao:
+```yaml
+agent:
+  topology:
+    profile: central
+  dnsService:
+    type: ClusterIP
+    clusterIP: ""
+    port: 53
+
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
+    namespace: kube-system
+    configMapName: coredns
+```
+
+Nesse modo, o patch job consulta o Service do Agent e injeta o `clusterIP` real no Corefile.
+
+---
+
+## Exemplo de bloco `forward`
+
+Com fallback habilitado, o CoreDNS fica com padrão semelhante a:
+
+```text
+forward . <target-astradns> /etc/resolv.conf {
+    policy sequential
+}
+```
+
+`policy sequential` garante tentativa prioritária no AstraDNS e fallback automático para o resolver original do nó se o Agent estiver indisponível.
+
+---
+
+## Guardrails
+
+- `node-local` + patch CoreDNS exige `agent.network.mode=linkLocal`.
+- `central` não aceita `agent.network.mode=linkLocal`.
+- `clusterDNS.provider` hoje suporta apenas `coredns`.
+- `kubectlImagePullPolicy` deve ser `Always`, `IfNotPresent` ou `Never`.
+
+---
+
+## Validação pós-deploy
 
 ```bash
-# Verifique se o ConfigMap do CoreDNS foi alterado
-kubectl get configmap coredns -n kube-system -o yaml | grep forward
+# 1) Corefile final
+kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}'
 
-# Verifique se o backup existe
-kubectl get configmap coredns-backup-astradns -n kube-system
+# 2) Backup gerado
+kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile\.astradns\.backup}'
 
-# Teste a resolucao DNS atraves do AstraDNS
-kubectl run dns-test --rm -it --restart=Never \
-  --image=busybox:1.37 -- nslookup example.com
+# 3) Job de patch executou
+kubectl -n astradns-system get jobs | grep coredns-patch
+kubectl -n astradns-system logs job/<release>-astradns-coredns-patch
+
+# 4) Smoke test DNS
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
 ```
 
-Verifique as metricas do agent para confirmar que as consultas estao fluindo:
+Em `central`, valide também o Service:
 
 ```bash
-kubectl port-forward -n astradns-system ds/astradns-agent 9153:9153
-curl -s http://localhost:9153/metrics | grep astradns_queries_total
+kubectl -n astradns-system get svc <release>-astradns-agent-dns -o wide
 ```
 
-## Reverter
+---
 
-Para reverter manualmente a integracao com o CoreDNS:
+## Rollback manual
 
 ```bash
-# Restaurar a partir do backup
-kubectl get configmap coredns-backup-astradns -n kube-system \
-  -o jsonpath='{.data.Corefile}' | \
-  kubectl create configmap coredns -n kube-system \
-  --from-file=Corefile=/dev/stdin --dry-run=client -o yaml | \
-  kubectl apply -f -
+kubectl -n kube-system patch configmap coredns --type merge --patch-file <(cat <<'EOF'
+data:
+  Corefile: |
+    # cole aqui o conteúdo salvo em Corefile.astradns.backup
+EOF
+)
 
-# Reiniciar o CoreDNS
-kubectl rollout restart deployment coredns -n kube-system
+kubectl -n kube-system rollout restart deployment coredns
 ```
 
-Ou simplesmente desinstale o AstraDNS -- o processo de `helm uninstall` nao reverte automaticamente as alteracoes do CoreDNS, entao a reversao manual pode ser necessaria.
+---
+
+## Referências
+
+- [Perfis de Topologia](topology-profiles.md)
+- [Runbook](../operations/runbook.md)

@@ -1,119 +1,190 @@
 # Helm Values Reference
 
-Complete reference for `deploy/helm/astradns/values.yaml`.
+This page documents the most relevant knobs from `deploy/helm/astradns/values.yaml` with an operational focus.
+
+!!! info "Scope"
+    This is a practical reference, not a full verbatim dump of the chart. It highlights values that change deployment shape, DNS routing behavior, security posture, and observability.
+
+---
 
 ## Operator
 
 ```yaml
 operator:
   image:
-    repository: astradns/operator    # Container image repository
-    tag: ""                          # Tag (defaults to Chart appVersion)
+    repository: ghcr.io/astradns/astradns-operator
+    tag: ""                  # default: v<appVersion>
     pullPolicy: IfNotPresent
-  replicas: 1                        # Number of operator replicas
-  leaderElect: true                  # Enable leader election for HA
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
+
+  replicas: 1
+  leaderElect: true
+  leaderElection:
+    id: 60acac32.astradns.com
+
+  serviceAccount:
+    automountServiceAccountToken: false
+
+  lifecycle:
+    preStop:
+      enabled: true
+      sleepSeconds: 5
 ```
 
-## Agent
+---
+
+## Agent (general)
 
 ```yaml
 agent:
   image:
-    repository: astradns/agent       # Container image repository
-    tag: ""                          # Tag (defaults to Chart appVersion)
+    repository: ghcr.io/astradns/astradns-agent
+    tag: v0.2.0
     pullPolicy: IfNotPresent
-  engineType: unbound                # DNS engine: unbound, coredns, powerdns
-  network:
-    mode: hostPort                   # hostPort or linkLocal
-    linkLocalIP: 169.254.20.11       # Link-local IP (when mode=linkLocal)
-  logMode: sampled                   # full, sampled, errors-only, off
-  logSampleRate: "0.1"               # Sample rate for sampled mode
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  engineImages: {}                   # Per-engine image overrides
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
+
+  engineType: unbound          # unbound | coredns | powerdns | bind
+
+  # Optional per-engine overrides
+  engineImages:
+    unbound: { repository: "", tag: "" }
+    coredns: { repository: "", tag: "" }
+    powerdns: { repository: "", tag: "" }
+    bind: { repository: "", tag: "" }
 ```
 
-### Engine Image Overrides
+---
+
+## Agent topology
 
 ```yaml
 agent:
-  engineImages:
-    coredns: "my-registry/coredns:1.12.1"
-    powerdns: "my-registry/pdns-recursor:5.2"
+  topology:
+    profile: node-local        # node-local | central
+
+  network:
+    mode: hostPort             # hostPort | linkLocal
+    linkLocalIP: 169.254.20.11
+
+  deployment:                  # used in profile=central
+    replicas: 3
+    strategy:
+      type: RollingUpdate
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+
+  dnsService:                  # used in profile=central
+    type: ClusterIP
+    clusterIP: ""             # optional; fixed Service IP recommended in production
+    port: 53
+    sessionAffinity: ClientIP
+    sessionAffinityTimeoutSeconds: 1800
 ```
 
-## CRDs
+### Important rules
+
+- `profile=central` cannot use `network.mode=linkLocal`.
+- `profile=node-local` with CoreDNS patching requires `network.mode=linkLocal`.
+- `central` renders `Deployment + Service`.
+- `node-local` renders `DaemonSet`.
+
+---
+
+## CoreDNS patch behavior
 
 ```yaml
-crds:
-  install: true                      # Install CRDs with the chart
+clusterDNS:
+  provider: coredns
+  forwardExternalToAstraDNS:
+    enabled: false
+    namespace: kube-system
+    configMapName: coredns
+    rolloutDeployment: coredns
+    forwardTarget: 169.254.20.11:5353
+    fallbackUpstream: /etc/resolv.conf
 ```
 
-## Webhook
+### How the forward target is selected
+
+- `node-local`: uses `forwardTarget` directly.
+- `central`: ignores `forwardTarget` and uses:
+  1. `agent.dnsService.clusterIP` when set;
+  2. runtime Service `clusterIP` discovery when empty.
+
+---
+
+## Proxy/runtime performance
 
 ```yaml
-webhook:
-  enabled: false                     # Enable validating webhook
-  certManager:
-    issuerRef:
-      name: ""                       # cert-manager Issuer name (required when enabled)
-      kind: ClusterIssuer            # Issuer or ClusterIssuer
+agent:
+  proxyTimeout: 2s
+  proxyCacheMaxEntries: 10000
+  proxyCacheDefaultTTL: 30s
+  engineConnectionPoolSize: 64
+  configWatchDebounce: 1s
+  engineRecoveryInterval: 5s
+  componentErrorBuffer: 5
 ```
 
-!!! warning "cert-manager required"
-    The webhook requires cert-manager to provision TLS certificates. Ensure cert-manager is installed and the issuer exists before enabling.
+---
 
-## Observability
+## Observability and diagnostics
 
 ```yaml
-serviceMonitor:
-  enabled: false                     # Create ServiceMonitor for Prometheus Operator
+agent:
+  metrics:
+    bearerToken: ""           # optional /metrics protection
 
-grafana:
-  dashboards:
-    enabled: false                   # Create ConfigMap for Grafana sidecar discovery
+  diagnostics:
+    enabled: false
+    targets: ""               # e.g. s3.us-west-004.backblazeb2.com
+    interval: 1m
+    timeout: 3s
+
+  tracing:
+    enabled: false
+    endpoint: localhost:4318
+    insecure: true
+    sampleRatio: "0.1"
+    serviceName: astradns-agent
+
+  logMode: sampled
+  logSampleRate: "0.1"
 ```
 
-## CoreDNS Integration
+---
+
+## Security defaults
 
 ```yaml
-coredns:
-  integration:
-    enabled: false                   # Patch CoreDNS to forward external queries
+operator:
+  serviceAccount:
+    automountServiceAccountToken: false
+
+agent:
+  serviceAccount:
+    automountServiceAccountToken: false
 ```
 
-When enabled, a post-install Kubernetes Job:
+!!! note "When to enable token mount"
+    Set `automountServiceAccountToken=true` only when the workload actually needs Kubernetes API access at runtime.
 
-1. Backs up the current CoreDNS ConfigMap
-2. Adds a `forward` directive pointing external zones to the AstraDNS agent
-3. Restarts the CoreDNS deployment to pick up the change
+---
 
-## Production Profile
-
-A production-ready values file is provided at `values-production.yaml`:
+## Production install example
 
 ```bash
-helm install astradns deploy/helm/astradns \
-  -f deploy/helm/astradns/values-production.yaml \
-  --set webhook.certManager.issuerRef.name=your-issuer
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
+  --version 0.2.4 \
+  -n astradns-system --create-namespace \
+  -f values-production.yaml \
+  --set webhook.certManager.issuerRef.name=<cluster-issuer>
 ```
 
-This enables: linkLocal network mode, CoreDNS integration, webhook enforcement, ServiceMonitor, and Grafana dashboards.
+---
+
+## Related
+
+- [Topology Profiles](../guides/topology-profiles.md)
+- [CoreDNS Integration](../guides/coredns-integration.md)
+- [Runbook](../operations/runbook.md)

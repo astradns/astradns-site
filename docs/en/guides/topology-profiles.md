@@ -1,55 +1,105 @@
-# Topology Profiles
+# Agent Topology Profiles
 
-AstraDNS supports two deployment topologies for the Agent, allowing you to balance latency against resource cost.
+AstraDNS provides two Agent topology profiles:
 
-## Choosing a Profile
+- `node-local` (default): DaemonSet on eligible nodes, local forwarding.
+- `central`: Deployment with fixed replicas behind a DNS Service.
+
+This guide helps you choose the right profile and understand practical trade-offs across latency, cost, cache behavior, and operational risk.
+
+---
+
+## Executive summary
+
+If you need a quick decision:
+
+- **Choose `node-local`** when ultra-low latency and node-level isolation matter most.
+- **Choose `central`** when cluster size makes per-node Agent pods expensive.
 
 ```mermaid
 flowchart TD
-    A[How many nodes?] -->|< 50| B[node-local]
-    A -->|50–200| C{Latency-sensitive?}
-    A -->|> 200| D[central]
-    C -->|Yes| B
-    C -->|No| D
+    A[Main constraint?] -->|Latency and isolation| B[node-local]
+    A -->|Cost and fleet scale| C[central]
+    B --> D[DaemonSet + link-local]
+    C --> E[Deployment + DNS Service]
 ```
 
-| Factor | node-local | central |
-|--------|-----------|---------|
-| Cluster size | Any (optimal < 100) | 50+ nodes |
-| DNS latency | < 1 ms | ~1–2 ms |
-| Memory overhead | 128 Mi × N nodes | 128 Mi × replicas |
-| Cache isolation | Per-node | Per-replica (shared) |
-| Failure blast radius | Single node | Replica set |
+---
 
-## node-local (Default)
+## Why only two profiles
 
-The default profile deploys the Agent as a DaemonSet on every eligible node. Each pod binds to the link-local address `169.254.20.11` and CoreDNS on each node forwards to it.
+An intermediate `dns-pool` profile looks attractive at first, but in practice it behaves like central mode with node affinity:
 
+- cluster-wide benefit still requires Service-based routing;
+- pool pinning can be expressed via Deployment affinity;
+- a third profile increases chart complexity without a proportional operational gain.
+
+So the recommended model is intentionally compact:
+
+1. `node-local`
+2. `central`
+
+---
+
+## Decision matrix
+
+| Factor | `node-local` | `central` |
+|---|---|---|
+| Kubernetes workload kind | DaemonSet | Deployment |
+| DNS routing | link-local/hostPort per node | ClusterIP Service |
+| Typical latency | sub-ms to ~1 ms | ~1-2 ms intra-cluster |
+| Memory footprint | scales with node count | scales with replica count |
+| Cache scope | per node (isolated) | per replica (shared) |
+| Failure blast radius | single node | replica set |
+| Scaling model | add/remove nodes | change `replicas` |
+
+!!! tip "Rule of thumb"
+    Small/medium latency-sensitive clusters usually fit `node-local`.
+    Large cost-optimized fleets usually fit `central`.
+
+---
+
+## `node-local` profile (default)
+
+In `node-local`, each eligible node runs its own Agent.
+
+```text
+Pod -> CoreDNS -> 169.254.20.11:53 (local Agent) -> Engine -> Upstream
 ```
-Pod → CoreDNS → 169.254.20.11:53 (Agent DaemonSet) → Engine → Upstream
-```
 
-This is the same architecture from [ADR-001](../decisions/adr-001.md). No additional configuration is needed.
+### Minimal configuration
 
 ```yaml
 agent:
   topology:
-    profile: node-local  # this is the default
+    profile: node-local
+  network:
+    mode: linkLocal
+    linkLocalIP: 169.254.20.11
+
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
+    forwardTarget: 169.254.20.11:5353
 ```
 
-### When to use
+### Best fit scenarios
 
-- Small to medium clusters (< 100 nodes)
-- Workloads that are latency-sensitive (financial, real-time)
-- Environments where per-node cache isolation is a requirement
+- latency-sensitive workloads;
+- strict per-node cache isolation;
+- environments that prioritize single-node fault isolation.
 
-## central
+---
 
-The `central` profile deploys the Agent as a Deployment with a fixed replica count, fronted by a ClusterIP Service. CoreDNS forwards to the Service FQDN instead of a link-local IP.
+## `central` profile
 
+In `central`, Agent runs as a Deployment behind a DNS Service exposing UDP/TCP 53.
+
+```text
+Pod -> CoreDNS -> AstraDNS DNS Service -> Agent Deployment -> Engine -> Upstream
 ```
-Pod → CoreDNS → astradns-agent-dns.astradns-system.svc.cluster.local:53 (Service) → Agent Deployment → Engine → Upstream
-```
+
+### Recommended baseline
 
 ```yaml
 agent:
@@ -72,84 +122,99 @@ agent:
     sessionAffinityTimeoutSeconds: 1800
 ```
 
-### When to use
+### CoreDNS target strategy in `central`
 
-- Large clusters (100+ nodes) where per-node DNS pods are wasteful
-- Cost-optimized environments willing to accept ~1–2 ms latency
-- Multi-tenant platforms where centralized DNS management is preferred
+The chart uses this precedence:
 
-### Sizing guide
+1. If `agent.dnsService.clusterIP` is set, CoreDNS forwards to the fixed IP.
+2. If it is empty, the patch job discovers Service `clusterIP` at runtime.
 
-| Cluster nodes | Recommended replicas | Estimated memory |
-|--------------|---------------------|-----------------|
-| 50–100 | 2 | 256 Mi |
-| 100–300 | 3 | 384 Mi |
-| 300–1000 | 5 | 640 Mi |
-| 1000+ | 7–10 | 896 Mi – 1.28 Gi |
+This lets you keep an explicit, stable target in production while retaining a safe auto mode.
 
-These are starting points. Monitor `astradns_queries_total` per replica and scale based on actual query rate.
+### Best fit scenarios
 
-### Session affinity
+- large clusters where per-node Agents are expensive;
+- centralized DNS operations;
+- environments that prefer replica-based scaling.
 
-`sessionAffinity: ClientIP` ensures that queries from the same source IP consistently hit the same Agent replica. This keeps each replica's cache warm for its set of clients, improving hit ratio without sacrificing failover — if a replica goes down, kube-proxy automatically routes to another.
+---
 
-The default timeout (1800s / 30 min) balances cache warmth against re-balancing after scaling events.
+## Cache and session affinity
 
-## Guardrails
+In `central`, `sessionAffinity: ClientIP` improves cache warmth by consistently routing the same client IP to the same Agent replica.
 
-The Helm chart enforces compatibility:
+- `ClientIP`: better cache hit ratio, controlled rebalance.
+- `None`: more even load, less cache locality.
 
-| Condition | Behavior |
-|-----------|----------|
-| `profile=central` + `network.mode=linkLocal` | `fail` — link-local requires a DaemonSet on every node |
-| `profile=central` with `replicas < 2` | Warning in NOTES.txt (no HA) |
-| `profile=central` without `topologySpreadConstraints` | Default spread by hostname applied |
-| `profile=central` | PDB created with `minAvailable: 1` |
+Recommended default: `ClientIP` with `1800` seconds timeout.
 
-## CoreDNS integration
+---
 
-In `node-local` mode, the CoreDNS patch job configures forwarding to `169.254.20.11`.
+## Helm guardrails
 
-In `central` mode, it configures forwarding to the Service FQDN:
+The chart blocks unsafe combinations:
 
+| Condition | Result |
+|---|---|
+| `profile=central` + `network.mode=linkLocal` | template `fail` |
+| `profile=node-local` + CoreDNS patch + `network.mode!=linkLocal` | template `fail` |
+| `profile=central` + PDB | `minAvailable: 1` |
+| `profile=central` + missing spread settings | hostname spread defaults are applied |
+
+!!! warning "HA in central"
+    `replicas: 1` removes high availability.
+    For production, keep `replicas >= 2`.
+
+---
+
+## Zero-downtime migration
+
+### node-local -> central
+
+1. Deploy `central` in parallel.
+2. Verify the Agent DNS Service and pod readiness.
+3. Patch CoreDNS to point to the central target.
+4. Observe DNS metrics for 30-60 minutes.
+5. Disable node-local.
+
+### central -> node-local
+
+1. Deploy node-local DaemonSet.
+2. Validate node coverage for workload nodes.
+3. Patch CoreDNS back to link-local target.
+4. Verify latency/error stability.
+5. Remove central Deployment.
+
+---
+
+## Post-change validation checklist
+
+```bash
+# 1) CoreDNS points to the expected target
+kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}'
+
+# 2) Agent pods are healthy
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
+
+# 3) DNS Service exists (central only)
+kubectl -n astradns-system get svc <release>-astradns-agent-dns
+
+# 4) DNS smoke test from workload perspective
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
 ```
-forward . astradns-agent-dns.astradns-system.svc.cluster.local:53
-```
 
-!!! note "No circular dependency"
-    CoreDNS resolves `.svc.cluster.local` names via its built-in `kubernetes` plugin, which watches the Kubernetes API directly. It does **not** use DNS forwarding to resolve Service names, so there is no circular dependency.
+Monitor for at least the first hour:
 
-## Migrating from node-local to central
+- `astradns_queries_total`
+- `astradns_upstream_latency_seconds`
+- `astradns_upstream_failures_total`
+- `astradns_cache_hits_total`
+- `astradns_servfail_total`
 
-1. **Deploy central alongside node-local** — install a second release with `profile=central` in a different namespace to validate behavior.
-
-2. **Verify DNS resolution** through the central Service:
-    ```bash
-    kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- \
-      nslookup example.com astradns-agent-dns.astradns-system.svc.cluster.local
-    ```
-
-3. **Switch the profile** in your primary release:
-    ```yaml
-    agent:
-      topology:
-        profile: central
-      deployment:
-        replicas: 3
-    ```
-
-4. **Apply and monitor**:
-    ```bash
-    helm upgrade astradns astradns/astradns -f values.yaml -n astradns-system
-    ```
-
-5. **Watch metrics** for the first hour:
-    - `astradns_queries_total` — verify traffic is flowing
-    - `astradns_upstream_latency_seconds` — compare p95 against baseline
-    - `astradns_cache_hits_total` — confirm cache is warming up
+---
 
 ## Related
 
-- [ADR-009: Agent Topology Profiles](../decisions/adr-009.md) — the decision record
-- [ADR-001: Data Path Interception](../decisions/adr-001.md) — the original NodeLocal DNS pattern
-- [Production Deployment](production-deployment.md) — general production checklist
+- [ADR-009: Agent Topology Profiles](../decisions/adr-009.md)
+- [ADR-001: Data Path Interception](../decisions/adr-001.md)
+- [Production Deployment](production-deployment.md)

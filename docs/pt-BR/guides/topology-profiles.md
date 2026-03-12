@@ -1,55 +1,105 @@
-# Perfis de Topologia
+# Perfis de Topologia do Agent
 
-O AstraDNS suporta duas topologias de deploy para o Agent, permitindo equilibrar latência contra custo de recursos.
+O AstraDNS oferece dois perfis de topologia para o Agent:
 
-## Escolhendo um Perfil
+- `node-local` (padrão): DaemonSet em todos os nós elegíveis, com encaminhamento local.
+- `central`: Deployment com réplicas fixas atrás de um Service DNS.
+
+O objetivo desta página é ajudar você a escolher o perfil certo para o seu cluster e entender os impactos reais em latência, custo, cache e operação.
+
+---
+
+## Resumo executivo
+
+Se você quer decisão rápida:
+
+- **Escolha `node-local`** quando latência mínima e isolamento por nó são prioridade.
+- **Escolha `central`** quando seu cluster é grande e custo operacional por nó está alto.
 
 ```mermaid
 flowchart TD
-    A[Quantos nós?] -->|< 50| B[node-local]
-    A -->|50–200| C{Sensível a latência?}
-    A -->|> 200| D[central]
-    C -->|Sim| B
-    C -->|Não| D
+    A[Qual problema maior?] -->|Latência e isolamento| B[node-local]
+    A -->|Custo e simplicidade em escala| C[central]
+    B --> D[DaemonSet + link-local]
+    C --> E[Deployment + Service DNS]
 ```
 
-| Fator | node-local | central |
-|-------|-----------|---------|
-| Tamanho do cluster | Qualquer (ideal < 100) | 50+ nós |
-| Latência DNS | < 1 ms | ~1–2 ms |
-| Overhead de memória | 128 Mi × N nós | 128 Mi × réplicas |
-| Isolamento de cache | Por nó | Por réplica (compartilhado) |
-| Raio de falha | Nó individual | Conjunto de réplicas |
+---
 
-## node-local (Padrão)
+## Por que apenas dois perfis
 
-O perfil padrão implanta o Agent como um DaemonSet em cada nó elegível. Cada pod se liga ao endereço link-local `169.254.20.11` e o CoreDNS em cada nó encaminha para ele.
+Historicamente, uma opção intermediária (`dns-pool`) parece atraente, mas na prática ela repete o modo central com diferença mínima:
 
+- para beneficiar pods em todos os nós, o tráfego passa por Service de qualquer forma;
+- afinidade para pool dedicado pode ser feita no próprio Deployment (`nodeAffinity`);
+- manter um terceiro perfil aumenta complexidade de chart sem ganho proporcional.
+
+Por isso, a recomendação é manter somente:
+
+1. `node-local`
+2. `central`
+
+---
+
+## Matriz de decisão
+
+| Fator | `node-local` | `central` |
+|---|---|---|
+| Workload Kubernetes | DaemonSet | Deployment |
+| Roteamento DNS | link-local/hostPort por nó | Service ClusterIP |
+| Latência típica | sub-milissegundo até ~1 ms | ~1-2 ms intra-cluster |
+| Uso de memória | proporcional ao número de nós | proporcional às réplicas |
+| Cache | por nó (isolado) | por réplica (compartilhado) |
+| Blast radius | falha isolada por nó | por réplica/grupo |
+| Escala | adiciona nós | ajusta `replicas` |
+
+!!! tip "Regra de bolso"
+    Clusters pequenos/médios e sensíveis a latência tendem a ganhar com `node-local`.
+    Clusters grandes e orientados a custo tendem a ganhar com `central`.
+
+---
+
+## Perfil `node-local` (padrão)
+
+No modo `node-local`, cada nó elegível roda seu próprio Agent.
+
+```text
+Pod -> CoreDNS -> 169.254.20.11:53 (Agent local) -> Engine -> Upstream
 ```
-Pod → CoreDNS → 169.254.20.11:53 (Agent DaemonSet) → Engine → Upstream
-```
 
-Esta é a mesma arquitetura do [ADR-001](../decisions/adr-001.md). Nenhuma configuração adicional é necessária.
+### Configuração mínima
 
 ```yaml
 agent:
   topology:
-    profile: node-local  # este é o padrão
+    profile: node-local
+  network:
+    mode: linkLocal
+    linkLocalIP: 169.254.20.11
+
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
+    forwardTarget: 169.254.20.11:5353
 ```
 
-### Quando usar
+### Quando escolher
 
-- Clusters pequenos a médios (< 100 nós)
-- Workloads sensíveis a latência (financeiro, tempo real)
-- Ambientes onde isolamento de cache por nó é requisito
+- workloads de baixa latência;
+- necessidade de isolamento de cache por nó;
+- ambientes onde falha de um nó não deve afetar o restante.
 
-## central
+---
 
-O perfil `central` implanta o Agent como um Deployment com contagem fixa de réplicas, atrás de um Service ClusterIP. O CoreDNS encaminha para o FQDN do Service em vez de um IP link-local.
+## Perfil `central`
 
+No modo `central`, o Agent roda como Deployment e é exposto por Service DNS (UDP/TCP 53).
+
+```text
+Pod -> CoreDNS -> Service DNS do AstraDNS -> Agent Deployment -> Engine -> Upstream
 ```
-Pod → CoreDNS → astradns-agent-dns.astradns-system.svc.cluster.local:53 (Service) → Agent Deployment → Engine → Upstream
-```
+
+### Configuração mínima recomendada
 
 ```yaml
 agent:
@@ -72,84 +122,99 @@ agent:
     sessionAffinityTimeoutSeconds: 1800
 ```
 
-### Quando usar
+### Endereço alvo do CoreDNS em `central`
 
-- Clusters grandes (100+ nós) onde pods DNS por nó são desperdício
-- Ambientes otimizados para custo dispostos a aceitar ~1–2 ms de latência
-- Plataformas multi-tenant onde gestão centralizada de DNS é preferida
+O chart usa esta estratégia:
 
-### Guia de dimensionamento
+1. Se `agent.dnsService.clusterIP` estiver definido, usa IP fixo (preferível para estabilidade).
+2. Se estiver vazio, descobre o `clusterIP` do Service em tempo de execução no patch job.
 
-| Nós do cluster | Réplicas recomendadas | Memória estimada |
-|---------------|----------------------|-----------------|
-| 50–100 | 2 | 256 Mi |
-| 100–300 | 3 | 384 Mi |
-| 300–1000 | 5 | 640 Mi |
-| 1000+ | 7–10 | 896 Mi – 1.28 Gi |
+Isso evita depender de FQDN no Corefile quando você quer destino estável por IP.
 
-Estes são pontos de partida. Monitore `astradns_queries_total` por réplica e escale com base na taxa real de queries.
+### Quando escolher
 
-### Afinidade de sessão
+- clusters grandes (alto custo de DaemonSet por nó);
+- operação centralizada de DNS;
+- preferência por escalar por réplicas e não por número de nós.
 
-`sessionAffinity: ClientIP` garante que queries do mesmo IP de origem sempre cheguem à mesma réplica do Agent. Isso mantém o cache de cada réplica aquecido para seus clientes, melhorando a taxa de acerto sem sacrificar failover — se uma réplica cair, o kube-proxy roteia automaticamente para outra.
+---
 
-O timeout padrão (1800s / 30 min) equilibra aquecimento do cache com rebalanceamento após eventos de escalonamento.
+## Cache e afinidade de sessão
 
-## Guardrails
+No modo `central`, o `sessionAffinity: ClientIP` ajuda a manter cache aquecido por cliente.
 
-O chart Helm aplica compatibilidade:
+- Com `ClientIP`, o mesmo cliente tende a bater na mesma réplica.
+- Com `None`, o tráfego distribui mais, mas cada réplica perde calor de cache.
 
-| Condição | Comportamento |
-|----------|---------------|
-| `profile=central` + `network.mode=linkLocal` | `fail` — link-local requer DaemonSet em cada nó |
-| `profile=central` com `replicas < 2` | Aviso em NOTES.txt (sem HA) |
-| `profile=central` sem `topologySpreadConstraints` | Spread padrão por hostname aplicado |
-| `profile=central` | PDB criado com `minAvailable: 1` |
+Recomendação padrão: `ClientIP` com timeout de 30 min (`1800s`).
 
-## Integração CoreDNS
+---
 
-No modo `node-local`, o job de patch do CoreDNS configura encaminhamento para `169.254.20.11`.
+## Guardrails do chart
 
-No modo `central`, ele configura encaminhamento para o FQDN do Service:
+O Helm já bloqueia combinações perigosas:
 
+| Condição | Resultado |
+|---|---|
+| `profile=central` + `network.mode=linkLocal` | `fail` no template |
+| `profile=node-local` + CoreDNS patch + `network.mode!=linkLocal` | `fail` no template |
+| `profile=central` + PDB | usa `minAvailable: 1` |
+| `profile=central` + spread vazio | default por hostname aplicado |
+
+!!! warning "HA em central"
+    Rodar `replicas: 1` em `central` remove alta disponibilidade.
+    Para produção, mantenha `replicas >= 2`.
+
+---
+
+## Migração sem downtime
+
+### node-local -> central
+
+1. Suba `central` em paralelo (release separado ou janela controlada).
+2. Verifique Service DNS do Agent (`kubectl get svc ...`).
+3. Aplique patch do CoreDNS para apontar ao target central.
+4. Monitore métricas por 30-60 minutos.
+5. Desative o modo node-local.
+
+### central -> node-local
+
+1. Suba DaemonSet node-local.
+2. Garanta cobertura nos nós de workload.
+3. Reaponte CoreDNS para o target link-local.
+4. Monitore latência e erros.
+5. Remova Deployment central.
+
+---
+
+## Checklist de validação pós-mudança
+
+```bash
+# 1) CoreDNS aponta para o target esperado
+kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}'
+
+# 2) Pods do agent saudáveis
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
+
+# 3) Service DNS (somente central)
+kubectl -n astradns-system get svc <release>-astradns-agent-dns
+
+# 4) Smoke test de resolução
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
 ```
-forward . astradns-agent-dns.astradns-system.svc.cluster.local:53
-```
 
-!!! note "Sem dependência circular"
-    O CoreDNS resolve nomes `.svc.cluster.local` via seu plugin `kubernetes` embutido, que observa a API do Kubernetes diretamente. Ele **não** usa encaminhamento DNS para resolver nomes de Service, portanto não há dependência circular.
+Métricas que devem ser observadas na primeira hora:
 
-## Migrando de node-local para central
+- `astradns_queries_total`
+- `astradns_upstream_latency_seconds`
+- `astradns_upstream_failures_total`
+- `astradns_cache_hits_total`
+- `astradns_servfail_total`
 
-1. **Implante central ao lado do node-local** — instale um segundo release com `profile=central` em um namespace diferente para validar o comportamento.
+---
 
-2. **Verifique a resolução DNS** através do Service central:
-    ```bash
-    kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- \
-      nslookup example.com astradns-agent-dns.astradns-system.svc.cluster.local
-    ```
+## Referências
 
-3. **Mude o perfil** no seu release primário:
-    ```yaml
-    agent:
-      topology:
-        profile: central
-      deployment:
-        replicas: 3
-    ```
-
-4. **Aplique e monitore**:
-    ```bash
-    helm upgrade astradns astradns/astradns -f values.yaml -n astradns-system
-    ```
-
-5. **Observe as métricas** durante a primeira hora:
-    - `astradns_queries_total` — verifique se o tráfego está fluindo
-    - `astradns_upstream_latency_seconds` — compare p95 com o baseline
-    - `astradns_cache_hits_total` — confirme que o cache está aquecendo
-
-## Relacionados
-
-- [ADR-009: Perfis de Topologia do Agent](../decisions/adr-009.md) — o registro de decisão
-- [ADR-001: Interceptação do Caminho de Dados](../decisions/adr-001.md) — o padrão NodeLocal DNS original
-- [Deploy em Produção](production-deployment.md) — checklist geral de produção
+- [ADR-009: Perfis de Topologia do Agent](../decisions/adr-009.md)
+- [ADR-001: Interceptação do Caminho de Dados](../decisions/adr-001.md)
+- [Deploy em Produção](production-deployment.md)
