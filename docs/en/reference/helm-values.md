@@ -175,7 +175,7 @@ agent:
 
 ```bash
 helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
-  --version 0.2.4 \
+  --version 0.2.5 \
   -n astradns-system --create-namespace \
   -f values-production.yaml \
   --set webhook.certManager.issuerRef.name=<cluster-issuer>
