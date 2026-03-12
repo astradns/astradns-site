@@ -36,13 +36,17 @@ When `coredns.integration.enabled=true`, the Helm chart creates a post-install J
         pods insecure
         fallthrough in-addr.arpa ip6.arpa
     }
-    forward . 169.254.20.11           # <-- AstraDNS agent
+    forward . 169.254.20.11:5353 /etc/resolv.conf {
+        policy sequential
+    }
     cache 30
     loop
     reload
     loadbalance
 }
 ```
+
+With `policy sequential`, CoreDNS always tries the AstraDNS agent first. If the agent becomes unreachable, CoreDNS automatically fails over to `/etc/resolv.conf` (the node's original resolver) within ~1 second. When the agent recovers, traffic flows back automatically.
 
 ## Configuration
 
@@ -54,9 +58,19 @@ agent:
     mode: linkLocal                   # Required for CoreDNS integration
     linkLocalIP: 169.254.20.11
 
-coredns:
-  integration:
+clusterDNS:
+  forwardExternalToAstraDNS:
     enabled: true
+    fallbackUpstream: /etc/resolv.conf  # Default — automatic failover
+```
+
+To disable the fallback (not recommended):
+
+```yaml
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
+    fallbackUpstream: ""
 ```
 
 ### Required Network Mode
@@ -65,6 +79,19 @@ CoreDNS integration requires `linkLocal` network mode. The agent binds to `169.2
 
 !!! warning
     Using `hostPort` mode with CoreDNS integration is not supported because CoreDNS would need to know each node's IP address, which varies across the cluster.
+
+## Failover Behavior
+
+By default, the patch job configures CoreDNS with a fallback upstream (`/etc/resolv.conf`) using `policy sequential`:
+
+| Scenario | Behavior |
+|----------|----------|
+| Agent healthy | All external queries go through AstraDNS (metrics, filtering, caching) |
+| Agent unreachable | CoreDNS detects failure within ~1s and routes to fallback upstream |
+| Agent recovers | CoreDNS health check restores AstraDNS as primary within ~10s |
+
+!!! note
+    During failover, queries bypass AstraDNS — no metrics, no domain filtering, no proxy cache. The DaemonSet ensures the agent pod restarts automatically, minimizing failover duration.
 
 ## Verification
 
