@@ -1,5 +1,5 @@
 site_name: AstraDNS
-site_url: https://astradns.github.io/astradns-site
+site_url: https://docs.astradns.com
 site_description: Visibility, security, and cost control over external DNS in Kubernetes.
 repo_url: https://github.com/astradns/astradns-site
 repo_name: astradns/astradns-site
