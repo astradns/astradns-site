@@ -1,0 +1,222 @@
+site_name: AstraDNS
+site_url: https://astradns.github.io/astradns-site
+site_description: Visibility, security, and cost control over external DNS in Kubernetes.
+repo_url: https://github.com/astradns/astradns-site
+repo_name: astradns/astradns-site
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2026 AstraDNS Authors
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/dns
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - toc.follow
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      reconfigure_material: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+          nav:
+            - Home: index.md
+            - Getting Started:
+                - Overview: getting-started/index.md
+                - Prerequisites: getting-started/prerequisites.md
+                - Installation: getting-started/installation.md
+            - Architecture:
+                - Overview: architecture/index.md
+                - Components: architecture/components.md
+                - Data Path: architecture/data-path.md
+                - Engine Selection: architecture/engine-selection.md
+            - Guides:
+                - Helm Configuration: guides/helm-configuration.md
+                - CoreDNS Integration: guides/coredns-integration.md
+                - Production Deployment: guides/production-deployment.md
+            - Reference:
+                - CRDs:
+                    - Overview: reference/crds/index.md
+                    - DNSUpstreamPool: reference/crds/dnsupstreampool.md
+                    - DNSCacheProfile: reference/crds/dnscacheprofile.md
+                    - ExternalDNSPolicy: reference/crds/externaldnspolicy.md
+                - Metrics: reference/metrics.md
+                - Environment Variables: reference/environment-variables.md
+                - Helm Values: reference/helm-values.md
+            - Operations:
+                - Runbook: operations/runbook.md
+                - SLO Validation: operations/slo.md
+                - Troubleshooting: operations/troubleshooting.md
+                - Upgrade Guide: operations/upgrade-guide.md
+            - Decisions:
+                - Overview: decisions/index.md
+            - Contributing:
+                - Development: contributing/index.md
+                - Release Process: contributing/release-process.md
+        - locale: pt-BR
+          name: Português
+          build: true
+          nav:
+            - Início: index.md
+            - Primeiros Passos:
+                - Visão Geral: getting-started/index.md
+                - Pré-requisitos: getting-started/prerequisites.md
+                - Instalação: getting-started/installation.md
+            - Arquitetura:
+                - Visão Geral: architecture/index.md
+                - Componentes: architecture/components.md
+                - Caminho de Dados: architecture/data-path.md
+                - Seleção de Engine: architecture/engine-selection.md
+            - Guias:
+                - Configuração Helm: guides/helm-configuration.md
+                - Integração CoreDNS: guides/coredns-integration.md
+                - Deploy em Produção: guides/production-deployment.md
+            - Referência:
+                - CRDs:
+                    - Visão Geral: reference/crds/index.md
+                    - DNSUpstreamPool: reference/crds/dnsupstreampool.md
+                    - DNSCacheProfile: reference/crds/dnscacheprofile.md
+                    - ExternalDNSPolicy: reference/crds/externaldnspolicy.md
+                - Métricas: reference/metrics.md
+                - Variáveis de Ambiente: reference/environment-variables.md
+                - Valores Helm: reference/helm-values.md
+            - Operações:
+                - Runbook: operations/runbook.md
+                - Validação de SLO: operations/slo.md
+                - Solução de Problemas: operations/troubleshooting.md
+                - Guia de Atualização: operations/upgrade-guide.md
+            - Decisões:
+                - Visão Geral: decisions/index.md
+            - Contribuindo:
+                - Desenvolvimento: contributing/index.md
+                - Processo de Release: contributing/release-process.md
+        - locale: es
+          name: Español
+          build: true
+          nav:
+            - Inicio: index.md
+            - Primeros Pasos:
+                - Descripción General: getting-started/index.md
+                - Requisitos Previos: getting-started/prerequisites.md
+                - Instalación: getting-started/installation.md
+            - Arquitectura:
+                - Descripción General: architecture/index.md
+                - Componentes: architecture/components.md
+                - Ruta de Datos: architecture/data-path.md
+                - Selección de Motor: architecture/engine-selection.md
+            - Guías:
+                - Configuración Helm: guides/helm-configuration.md
+                - Integración CoreDNS: guides/coredns-integration.md
+                - Despliegue en Producción: guides/production-deployment.md
+            - Referencia:
+                - CRDs:
+                    - Descripción General: reference/crds/index.md
+                    - DNSUpstreamPool: reference/crds/dnsupstreampool.md
+                    - DNSCacheProfile: reference/crds/dnscacheprofile.md
+                    - ExternalDNSPolicy: reference/crds/externaldnspolicy.md
+                - Métricas: reference/metrics.md
+                - Variables de Entorno: reference/environment-variables.md
+                - Valores Helm: reference/helm-values.md
+            - Operaciones:
+                - Runbook: operations/runbook.md
+                - Validación de SLO: operations/slo.md
+                - Resolución de Problemas: operations/troubleshooting.md
+                - Guía de Actualización: operations/upgrade-guide.md
+            - Decisiones:
+                - Descripción General: decisions/index.md
+            - Contribuir:
+                - Desarrollo: contributing/index.md
+                - Proceso de Release: contributing/release-process.md
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  alternate:
+    - name: English
+      link: /en/
+      lang: en
+    - name: Português
+      link: /pt-BR/
+      lang: pt-BR
+    - name: Español
+      link: /es/
+      lang: es
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/astradns
+  generator: false
