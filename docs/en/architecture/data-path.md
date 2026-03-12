@@ -8,25 +8,38 @@ Understanding how DNS queries flow through AstraDNS is critical for debugging, c
 sequenceDiagram
     participant Pod
     participant CoreDNS
-    participant Agent as AstraDNS Agent
+    participant Proxy as Agent Proxy
     participant Engine as DNS Engine
     participant Upstream as Upstream Resolver
 
     Pod->>CoreDNS: A api.stripe.com?
     Note over CoreDNS: Internal zone? No.
-    CoreDNS->>Agent: Forward to 169.254.20.11:53
-    Agent->>Agent: Log query, start timer
-    Agent->>Engine: Forward to 127.0.0.1:5354
-    alt Cache hit
-        Engine-->>Agent: Cached response
-    else Cache miss
-        Engine->>Upstream: Resolve via 1.1.1.1
-        Upstream-->>Engine: Response
-        Engine->>Engine: Cache response
-        Engine-->>Agent: Response
+    CoreDNS->>Proxy: Forward to 169.254.20.11:53
+    Proxy->>Proxy: Rate limit check
+    Proxy->>Proxy: Domain filter check
+    alt Denied by filter
+        Proxy-->>CoreDNS: REFUSED / NXDOMAIN
     end
-    Agent->>Agent: Record latency, emit event
-    Agent-->>CoreDNS: DNS response
+    alt Proxy cache hit
+        Proxy-->>CoreDNS: Cached response
+    end
+    Proxy->>Engine: Forward to 127.0.0.1:5354
+    alt Engine responds
+        Engine-->>Proxy: Response (from engine cache or upstream)
+    else Engine unreachable
+        Proxy->>Proxy: Try stale cache (expired entries)
+        alt Stale cache hit
+            Proxy-->>CoreDNS: Stale response (TTL=1)
+        end
+        Proxy->>Upstream: Direct fallback query
+        alt Upstream responds
+            Upstream-->>Proxy: Response
+        else All failed
+            Proxy-->>CoreDNS: SERVFAIL
+        end
+    end
+    Proxy->>Proxy: Record latency, emit event
+    Proxy-->>CoreDNS: DNS response
     CoreDNS-->>Pod: DNS response
 ```
 
@@ -80,11 +93,27 @@ Each node maintains its own cache. There is no cross-node cache sharing.
 
 | Failure | Behavior | Recovery |
 |---------|----------|----------|
-| Agent pod crashes | CoreDNS retries fallback upstream | Agent restart via DaemonSet |
-| Engine subprocess dies | `/healthz` returns 503, pod restarts | Automatic via liveness probe |
+| Agent pod crashes | CoreDNS fails over to `/etc/resolv.conf` (sequential policy) | Agent restart via DaemonSet (~seconds) |
+| Engine subprocess dies | Proxy serves stale cache or resolves via upstream directly | Engine supervisor restarts within 5s |
+| Engine down + no cache | Proxy queries upstreams directly, bypassing engine | Transparent — no client impact |
+| Engine down + all upstreams down | SERVFAIL for non-cached queries | Automatic when engine or upstream recovers |
 | Upstream unreachable | Health checker marks unhealthy, SERVFAIL returned | Automatic when upstream recovers |
 | ConfigMap invalid | Reload fails, previous config retained | Fix CRD, operator re-renders |
 | Operator down | No config changes processed, existing config continues | Operator restarts via Deployment |
+
+### Resilience Chain
+
+When the DNS engine is unreachable, the proxy follows this fallback chain before returning SERVFAIL:
+
+```
+1. Proxy cache (fresh)     → instant response
+2. Engine                   → normal path
+3. Stale cache (expired)   → response with TTL=1 (up to 5 min after expiry)
+4. Direct upstream query   → bypasses engine, resolves via configured upstreams
+5. SERVFAIL                → all paths exhausted
+```
+
+Domain filtering and metrics continue to work in all degraded modes. Only engine-level features (DNSSEC validation, engine cache prefetch) are unavailable during fallback.
 
 ## Protocol Support
 

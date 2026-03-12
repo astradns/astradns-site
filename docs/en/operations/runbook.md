@@ -99,6 +99,43 @@ The webhook enforces one `DNSUpstreamPool` per namespace. To change configuratio
 2. **Delete** the old pool first, then create the new one
 3. If the webhook is blocking all operations, temporarily disable: `helm upgrade ... --set webhook.enabled=false`
 
+### Engine subprocess down
+
+**Symptoms:** `astradns_agent_engine_recovery_attempts_total` is increasing, or `astradns_stale_cache_serves_total` is non-zero.
+
+**Impact:** The proxy automatically handles this via the resilience chain. Clients may experience slightly higher latency but should not see failures unless all upstreams are also unreachable.
+
+**Resilience chain (automatic):**
+
+1. **Proxy cache (fresh)** — instant response from cached entries
+2. **Stale cache (expired)** — entries expired within the last 5 minutes are served with TTL=1
+3. **Direct upstream fallback** — proxy queries configured upstreams directly, bypassing the engine
+4. **SERVFAIL** — only when all paths above are exhausted
+
+**Diagnosis:**
+
+```bash
+# Check if engine process is running
+kubectl exec -n astradns-system ds/astradns-agent -- ps aux | grep -E 'unbound|coredns|pdns'
+
+# Check engine recovery metrics
+kubectl port-forward -n astradns-system ds/astradns-agent 9153:9153 &
+curl -s http://localhost:9153/metrics | grep -E 'engine_recovery|stale_cache'
+
+# Check agent logs for engine errors
+kubectl logs -n astradns-system -l app.kubernetes.io/component=agent | grep -iE 'engine|supervisor|recovery'
+```
+
+**Resolution:**
+
+1. Check if the engine binary exists in the container image
+2. Verify the ConfigMap produces valid engine configuration: `kubectl get configmap astradns-agent-config -n astradns-system -o jsonpath='{.data.config\.json}' | jq .`
+3. Check resource limits — the engine subprocess may be OOMKilled
+4. The engine supervisor will automatically restart the engine (up to retry limits). If it keeps failing, inspect the underlying config or binary issue
+
+!!! info "No manual intervention needed"
+    In most cases the proxy resilience chain keeps DNS resolution working while the supervisor restarts the engine. Monitor `astradns_stale_cache_serves_total` and `astradns_agent_engine_recovery_success_total` to confirm automatic recovery.
+
 ### Config reload fails
 
 **Symptoms:** `astradns_agent_config_reload_errors_total` is increasing.

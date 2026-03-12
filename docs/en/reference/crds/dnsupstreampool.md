@@ -52,6 +52,39 @@ List of upstream DNS resolvers. At least one upstream is required.
 |-------|------|---------|------------|-------------|
 | `strategy` | string | `round-robin` | Enum: `round-robin`, `first-available`, `random` | Load balancing strategy across upstreams |
 
+### `domainFilter` (optional)
+
+Configures proxy-level domain allow/deny filtering. Rules are applied before the query reaches the DNS engine.
+
+| Field | Type | Default | Validation | Description |
+|-------|------|---------|------------|-------------|
+| `allow` | []string | `[]` | — | Domain patterns that are permitted. If non-empty, only matching domains are allowed. Supports wildcards: `*.example.com` matches any subdomain. |
+| `deny` | []string | `[]` | — | Domain patterns that are blocked. Deny rules are evaluated after allow rules; a domain matching both is denied. |
+| `action` | string | `refused` | Enum: `refused`, `nxdomain` | DNS response code for denied queries |
+
+**Example — block specific domains:**
+
+```yaml
+spec:
+  domainFilter:
+    deny:
+      - "*.malware.example"
+      - "evil.test.com"
+    action: refused
+```
+
+**Example — allow only specific domains:**
+
+```yaml
+spec:
+  domainFilter:
+    allow:
+      - "*.amazonaws.com"
+      - "*.stripe.com"
+      - "api.sendgrid.com"
+    action: nxdomain
+```
+
 ## Status
 
 | Field | Type | Description |

@@ -20,6 +20,7 @@ AstraDNS exposes Prometheus metrics on the agent's `:9153/metrics` endpoint.
 |--------|------|--------|-------------|
 | `astradns_cache_hits_total` | Counter | — | Cache hits (when cache status is known) |
 | `astradns_cache_misses_total` | Counter | — | Cache misses (when cache status is known) |
+| `astradns_stale_cache_serves_total` | Counter | — | Stale cache entries served when engine was unreachable |
 
 ### Upstream Metrics
 
@@ -40,8 +41,12 @@ AstraDNS exposes Prometheus metrics on the agent's `:9153/metrics` endpoint.
 | `astradns_agent_up` | Gauge | — | Agent running status (1=up, 0=shutting down) |
 | `astradns_agent_config_reload_total` | Counter | — | Total config reload attempts |
 | `astradns_agent_config_reload_errors_total` | Counter | — | Failed config reload attempts |
+| `astradns_agent_engine_recovery_attempts_total` | Counter | — | Engine recovery attempts by supervisor |
+| `astradns_agent_engine_recovery_success_total` | Counter | — | Successful engine recoveries |
+| `astradns_agent_engine_recovery_errors_total` | Counter | — | Failed engine recoveries |
 | `astradns_proxy_dropped_events_total` | Counter | — | Events dropped at proxy channel (backpressure) |
 | `astradns_fanout_dropped_events_total` | Counter | — | Events dropped during fan-out to workers |
+| `astradns_component_error_buffer_overflows_total` | Counter | — | Component errors dropped when error channel is full |
 
 ## Example Queries
 
@@ -83,6 +88,20 @@ rate(astradns_servfail_total[5m]) / rate(astradns_queries_total[5m])
 
 ```promql
 rate(astradns_denied_queries_total[5m])
+```
+
+### Stale Cache Fallback Active
+
+```promql
+rate(astradns_stale_cache_serves_total[5m]) > 0
+```
+
+Non-zero means the engine is (or was recently) unreachable and the proxy is serving expired cache entries.
+
+### Engine Recovery Attempts
+
+```promql
+rate(astradns_agent_engine_recovery_attempts_total[5m]) > 0
 ```
 
 ### Config Reload Failures
