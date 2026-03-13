@@ -38,7 +38,7 @@ operator:
 agent:
   image:
     repository: ghcr.io/astradns/astradns-agent
-    tag: v0.2.0
+    tag: v0.2.5
     pullPolicy: IfNotPresent
 
   engineType: unbound          # unbound | coredns | powerdns | bind

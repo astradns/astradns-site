@@ -37,15 +37,15 @@ make release-check
 Update `Chart.yaml` version and appVersion:
 
 ```yaml
-version: 0.2.0
-appVersion: "0.2.0"
+version: 0.2.5
+appVersion: "0.2.5"
 ```
 
 ### 2. Tag the Release
 
 ```bash
-git tag -a v0.2.0 -m "Release v0.2.0"
-git push origin v0.2.0
+git tag -a v0.2.5 -m "Release v0.2.5"
+git push origin v0.2.5
 ```
 
 ### 3. Automated Pipeline
@@ -72,7 +72,7 @@ Create a GitHub release from the tag with:
 # Package the chart
 make package-chart
 
-# Output: dist/astradns-0.2.0.tgz
+# Output: dist/astradns-0.2.5.tgz
 ```
 
 ## Rollback
