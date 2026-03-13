@@ -16,7 +16,9 @@ kubectl get pods,dnsupstreampools,dnscacheprofiles -n astradns-system
 **Solución:** Asegúrese de que `crds.install=true` en sus valores:
 
 ```bash
-helm install astradns deploy/helm/astradns --set crds.install=true
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
+  --namespace astradns-system --create-namespace \
+  --set crds.install=true
 ```
 
 ### El pod del agent está en CrashLoopBackOff

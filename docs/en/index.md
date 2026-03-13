@@ -60,11 +60,9 @@ graph LR
 ## Quick Start
 
 ```bash
-helm upgrade --install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system --create-namespace \
-  --set agent.engineType=unbound \
-  --set agent.network.mode=linkLocal \
-  --set clusterDNS.forwardExternalToAstraDNS.enabled=true
+  --set agent.engineType=unbound
 ```
 
 Then create your first upstream pool:

@@ -23,7 +23,7 @@ helm history astradns -n astradns-system
 ### 3. Ejecución en Seco
 
 ```bash
-helm upgrade astradns deploy/helm/astradns \
+helm upgrade astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   -f current-values.yaml \
   --dry-run --debug
@@ -34,7 +34,7 @@ Revise la salida en busca de cambios inesperados.
 ### 4. Actualizar
 
 ```bash
-helm upgrade astradns deploy/helm/astradns \
+helm upgrade astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   -f current-values.yaml
 ```
@@ -68,10 +68,13 @@ helm rollback astradns <previous-revision> -n astradns-system
 ## Actualizaciones de CRDs
 
 !!! warning "Los cambios de CRDs requieren atención manual"
-    Helm no actualiza los CRDs con `helm upgrade`. Si la nueva versión incluye cambios en los CRDs, aplíquelos manualmente:
+    Si la nueva version incluye cambios de CRD, ejecute la actualizacion con renderizado de CRDs habilitado:
 
     ```bash
-    kubectl apply -f deploy/helm/astradns/crds/
+    helm upgrade astradns oci://ghcr.io/astradns/helm-charts/astradns \
+      --namespace astradns-system \
+      -f current-values.yaml \
+      --set crds.install=true
     ```
 
 ## Notas Específicas por Versión

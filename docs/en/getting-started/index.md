@@ -17,9 +17,10 @@ After installation, every node in your cluster runs an AstraDNS Agent that:
 ### 1. Add the Helm chart
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
-  --create-namespace
+  --create-namespace \
+  --set agent.engineType=unbound
 ```
 
 ### 2. Create an upstream pool

@@ -5,9 +5,10 @@
 ### Instalacao Basica
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
-  --create-namespace
+  --create-namespace \
+  --set agent.engineType=unbound
 ```
 
 ### Instalacao para Producao
@@ -15,10 +16,10 @@ helm install astradns deploy/helm/astradns \
 Use o perfil de valores de producao para uma implantacao robusta:
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   --create-namespace \
-  -f deploy/helm/astradns/values-production.yaml \
+  -f values-production.yaml \
   --set webhook.certManager.issuerRef.name=your-cluster-issuer
 ```
 

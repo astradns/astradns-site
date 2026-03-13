@@ -43,8 +43,9 @@ Isso executa o script `test/slo/validate-mvp.sh` que:
 #### SLO 1: Tempo de Instalação
 
 ```bash
-time helm install astradns deploy/helm/astradns \
-  --namespace astradns-system --create-namespace
+time helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
+  --namespace astradns-system --create-namespace \
+  --set agent.engineType=unbound
 
 kubectl wait --for=condition=Ready pods \
   -l app.kubernetes.io/part-of=astradns \

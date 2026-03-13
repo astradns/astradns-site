@@ -2,10 +2,10 @@
 
 ## Instalacao
 
-### A Partir do Chart Local
+### A Partir do Chart OCI Oficial
 
 ```bash
-helm upgrade --install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   --create-namespace
 ```
@@ -15,7 +15,7 @@ helm upgrade --install astradns deploy/helm/astradns \
 A unica escolha de engine que o usuario precisa fazer e `agent.engineType`.
 
 ```bash
-helm upgrade --install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   --create-namespace \
   --set agent.engineType=unbound
@@ -31,7 +31,7 @@ Valores suportados: `unbound`, `coredns`, `powerdns`, `bind`.
 ### Com Valores Personalizados
 
 ```bash
-helm upgrade --install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   --create-namespace \
   -f my-values.yaml
@@ -137,7 +137,7 @@ kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup e
 ## Atualizacao
 
 ```bash
-helm upgrade astradns deploy/helm/astradns \
+helm upgrade astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   -f my-values.yaml
 ```
@@ -145,7 +145,7 @@ helm upgrade astradns deploy/helm/astradns \
 !!! tip "Execute um dry run primeiro"
     Sempre visualize as alteracoes antes de aplica-las:
     ```bash
-    helm upgrade astradns deploy/helm/astradns \
+    helm upgrade astradns oci://ghcr.io/astradns/helm-charts/astradns \
       --namespace astradns-system \
       -f my-values.yaml \
       --dry-run --debug
@@ -156,7 +156,7 @@ helm upgrade astradns deploy/helm/astradns \
 Para inspecionar os manifests renderizados sem instalar:
 
 ```bash
-helm template astradns deploy/helm/astradns \
+helm template astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   -f my-values.yaml
 ```
