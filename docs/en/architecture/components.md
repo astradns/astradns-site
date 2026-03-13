@@ -8,7 +8,7 @@ AstraDNS consists of four main components distributed across two planes.
 |----------|-------|
 | Kind | Deployment |
 | Replicas | 1 (with leader election for HA) |
-| Image | `astradns/operator` |
+| Image | `ghcr.io/astradns/astradns-operator:v<appVersion>` |
 | Ports | 8081 (health), 8443 (metrics), 9443 (webhook) |
 
 The operator runs three controllers:
@@ -42,7 +42,7 @@ Validates cross-references to upstream pools and cache profiles. Sets `Validated
 | Property | Value |
 |----------|-------|
 | Kind | DaemonSet |
-| Image | `astradns/agent` |
+| Image | `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>` |
 | Ports | 5353 (DNS), 8080 (health), 9153 (metrics) |
 
 The agent runs seven components in parallel goroutines:
@@ -83,13 +83,14 @@ See the [CRD Reference](../reference/crds/index.md) for full field documentation
 
 ## DNS Engine
 
-The engine is a subprocess managed by the agent. Three engines are supported:
+The engine is a subprocess managed by the agent. Four engines are supported:
 
 | Engine | Config File | Reload Method | Default |
 |--------|------------|---------------|---------|
 | **Unbound** | `unbound.conf` | `unbound-control reload` | Yes |
 | **CoreDNS** | `Corefile` | Auto-reload plugin | No |
 | **PowerDNS Recursor** | `recursor.conf` | `rec_control reload-zones` | No |
+| **BIND** | `named.conf` | `rndc reconfig` | No |
 
 All engines implement the same Go interface:
 

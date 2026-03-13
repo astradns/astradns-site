@@ -51,7 +51,7 @@ The agent binds to port `5353` on each node via `hostPort`. No special network c
 The agent binds to the link-local address `169.254.20.11:53` on each node. This mode requires:
 
 - `hostNetwork: true` on the agent DaemonSet (configured automatically by Helm)
-- CoreDNS configured to forward external queries to `169.254.20.11` (automated via `coredns.integration.enabled=true`)
+- CoreDNS configured to forward external queries to `169.254.20.11` (automated via `clusterDNS.forwardExternalToAstraDNS.enabled=true`)
 
 ## RBAC
 

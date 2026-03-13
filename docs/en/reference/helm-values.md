@@ -7,14 +7,20 @@ This page documents the most relevant knobs from `deploy/helm/astradns/values.ya
 
 ---
 
+## Image Management Model
+
+Helm manages image repository and version automatically. Users only choose `agent.engineType`.
+
+- Operator image: `ghcr.io/astradns/astradns-operator:v<appVersion>`
+- Agent image: `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>`
+
+---
+
 ## Operator
 
 ```yaml
 operator:
-  image:
-    repository: ghcr.io/astradns/astradns-operator
-    tag: ""                  # default: v<appVersion>
-    pullPolicy: IfNotPresent
+  imagePullPolicy: IfNotPresent
 
   replicas: 1
   leaderElect: true
@@ -22,7 +28,7 @@ operator:
     id: 60acac32.astradns.com
 
   serviceAccount:
-    automountServiceAccountToken: false
+    automountServiceAccountToken: true
 
   lifecycle:
     preStop:
@@ -36,19 +42,9 @@ operator:
 
 ```yaml
 agent:
-  image:
-    repository: ghcr.io/astradns/astradns-agent
-    tag: v0.2.5
-    pullPolicy: IfNotPresent
+  imagePullPolicy: IfNotPresent
 
   engineType: unbound          # unbound | coredns | powerdns | bind
-
-  # Optional per-engine overrides
-  engineImages:
-    unbound: { repository: "", tag: "" }
-    coredns: { repository: "", tag: "" }
-    powerdns: { repository: "", tag: "" }
-    bind: { repository: "", tag: "" }
 ```
 
 ---
@@ -159,15 +155,15 @@ agent:
 ```yaml
 operator:
   serviceAccount:
-    automountServiceAccountToken: false
+    automountServiceAccountToken: true
 
 agent:
   serviceAccount:
     automountServiceAccountToken: false
 ```
 
-!!! note "When to enable token mount"
-    Set `automountServiceAccountToken=true` only when the workload actually needs Kubernetes API access at runtime.
+!!! note "Token-mount policy"
+    The operator requires API access and keeps token mount enabled. Agent token mount stays disabled by default unless your runtime workflow requires Kubernetes API access from the agent pod.
 
 ---
 

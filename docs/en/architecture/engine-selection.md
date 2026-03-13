@@ -1,79 +1,46 @@
 # Engine Selection
 
-AstraDNS supports three DNS engines. The engine is selected at deploy time via the `ASTRADNS_ENGINE_TYPE` environment variable (or `agent.engineType` Helm value).
+AstraDNS supports four DNS engines. You choose the engine with a single Helm value: `agent.engineType`.
 
-## Comparison
+## Supported Engines
 
-| Feature | Unbound | CoreDNS | PowerDNS Recursor |
-|---------|---------|---------|-------------------|
-| **Type** | Recursive resolver | Authoritative + forwarding | Recursive resolver |
-| **Language** | C | Go | C++ |
-| **Memory footprint** | ~20-50 MB | ~30-60 MB | ~40-80 MB |
-| **Cache performance** | Excellent | Good | Good |
-| **DNSSEC validation** | Built-in | Plugin-based | Built-in |
-| **Config reload** | `unbound-control reload` | Auto-reload plugin | `rec_control reload-zones` |
-| **Maturity** | 20+ years | 10+ years | 15+ years |
-| **Default** | Yes | No | No |
+| Engine | Typical fit | Notes |
+|---|---|---|
+| `unbound` | Default for most clusters | Strong recursive cache behavior and simple operations |
+| `coredns` | Teams already standardized on CoreDNS | Operational consistency with existing CoreDNS expertise |
+| `powerdns` | PowerDNS-centered environments | Useful when your DNS estate already uses PowerDNS tooling |
+| `bind` | BIND-centered environments | Useful for teams with existing BIND operational practices |
 
-## When to Use Each
+## Image Policy (Helm)
 
-### Unbound (default)
+The chart manages image repository and version automatically:
 
-Best for most deployments. Unbound offers:
+- Operator image: `ghcr.io/astradns/astradns-operator:v<appVersion>`
+- Agent image: `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>`
 
-- Best-in-class caching with aggressive NSEC optimization
-- Lowest memory footprint
-- Simplest configuration (single file)
-- Battle-tested in production for 20+ years
+This keeps operator + agent + docs aligned to the same release line. Users do not need to pick image tags.
 
-```yaml
-# values.yaml
-agent:
-  engineType: unbound
-```
-
-### CoreDNS
-
-Choose CoreDNS when:
-
-- Your team already operates CoreDNS and wants a single DNS technology
-- You need custom plugins (e.g., service discovery, custom middleware)
-- You want Go-native observability integration
-
-```yaml
-# values.yaml
-agent:
-  engineType: coredns
-  engineImages:
-    coredns: coredns/coredns:1.12.1
-```
-
-### PowerDNS Recursor
-
-Choose PowerDNS when:
-
-- You need Lua scripting for response policy zones (RPZ)
-- Your organization standardizes on PowerDNS
-- You need advanced EDNS Client Subnet support
-
-```yaml
-# values.yaml
-agent:
-  engineType: powerdns
-  engineImages:
-    powerdns: powerdns/pdns-recursor:5.2
-```
-
-## Engine Images
-
-By default, the agent container ships with Unbound pre-installed. For other engines, you must provide a custom image or specify the engine image:
+## How to Choose an Engine
 
 ```yaml
 agent:
-  engineImages:
-    coredns: "my-registry/coredns:1.12.1"
-    powerdns: "my-registry/pdns-recursor:5.2"
+  engineType: unbound # unbound | coredns | powerdns | bind
 ```
 
-!!! warning
-    The default agent image only includes Unbound binaries. Using `engineType: coredns` or `engineType: powerdns` without providing the engine image or a custom agent image will fail at startup.
+### Practical guidance
+
+- Start with `unbound` unless you have a clear platform standard for another engine.
+- Use `coredns`, `powerdns`, or `bind` when your operations team already runs that stack and has existing tooling/playbooks.
+- Keep one engine per environment at a time; switch only with a controlled rollout window.
+
+## Verify the Selected Engine
+
+```bash
+# Engine type propagated to operator
+kubectl -n astradns-system get deploy astradns-operator \
+  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="ASTRADNS_ENGINE_TYPE")].value}'
+
+# Agent image variant selected by Helm
+kubectl -n astradns-system get ds astradns-agent \
+  -o jsonpath='{.spec.template.spec.containers[0].image}'
+```

@@ -41,34 +41,64 @@ use (
 EOF
 ```
 
-### Compilación y Pruebas
+### Como Ejecutamos Localmente
 
 ```bash
-# Types
+# 1) Contratos compartidos
 cd astradns-types
 make generate && make test && make vet
 
-# Agent
+# 2) Plano de datos
 cd astradns-agent
 make test && make vet
 
-# Operator
+# 3) Plano de control + chart Helm
 cd astradns-operator
-make manifests generate fmt vet test
+make test && make lint
 ```
 
-### Ejecutar Pruebas de Integración
+### Como Probamos Antes del Merge
 
 ```bash
+# Integracion full-stack (Kind + Helm + operator + agent)
 cd astradns-operator
 make test-integration
 ```
 
-### Ejecutar Matriz Multi-Versión de K8s
-
 ```bash
+# Matriz de versiones Kubernetes usada en el release gate
 cd astradns-operator
 make test-integration-matrix
+```
+
+```bash
+# Suite end-to-end
+cd astradns-operator
+make test-e2e
+```
+
+### Opcional: Ejecutar el Stack Manualmente en Kind
+
+```bash
+kind create cluster --name astradns-dev
+
+helm upgrade --install astradns deploy/helm/astradns \
+  --namespace astradns-system --create-namespace \
+  --set agent.engineType=unbound \
+  --set agent.network.mode=linkLocal \
+  --set clusterDNS.forwardExternalToAstraDNS.enabled=true
+
+kubectl apply -f - <<'EOF'
+apiVersion: dns.astradns.com/v1alpha1
+kind: DNSUpstreamPool
+metadata:
+  name: default
+  namespace: astradns-system
+spec:
+  upstreams:
+    - address: "1.1.1.1"
+    - address: "8.8.8.8"
+EOF
 ```
 
 ## Flujo de Contribución

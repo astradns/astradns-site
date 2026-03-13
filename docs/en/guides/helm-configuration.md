@@ -2,75 +2,95 @@
 
 ## Installation
 
-### From Local Chart
+### Install from Local Chart
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns deploy/helm/astradns \
   --namespace astradns-system \
   --create-namespace
 ```
 
-### With Custom Values
+### Choose the DNS Engine
+
+The only engine-level choice required from users is `agent.engineType`.
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns deploy/helm/astradns \
+  --namespace astradns-system \
+  --create-namespace \
+  --set agent.engineType=unbound
+```
+
+Supported values: `unbound`, `coredns`, `powerdns`, `bind`.
+
+!!! info "Image policy"
+    The chart pins official images automatically:
+    - `ghcr.io/astradns/astradns-operator:v<appVersion>`
+    - `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>`
+
+### Install with Custom Values
+
+```bash
+helm upgrade --install astradns deploy/helm/astradns \
   --namespace astradns-system \
   --create-namespace \
   -f my-values.yaml
 ```
 
-## Common Configurations
+## Topology Profiles
 
-### Minimal (Development)
+### Node-Local (default)
 
 ```yaml
-operator:
-  replicas: 1
 agent:
+  topology:
+    profile: node-local
   engineType: unbound
   network:
-    mode: hostPort
-crds:
-  install: true
+    mode: linkLocal
+
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
 ```
 
-### Production
+### Central
+
+```yaml
+agent:
+  topology:
+    profile: central
+  engineType: unbound
+  deployment:
+    replicas: 3
+  dnsService:
+    type: ClusterIP
+    sessionAffinity: ClientIP
+```
+
+## Common Profiles
+
+### Production Baseline
 
 ```yaml
 operator:
-  replicas: 1
   leaderElect: true
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 
 agent:
   engineType: unbound
+  topology:
+    profile: node-local
   network:
     mode: linkLocal
   logMode: sampled
   logSampleRate: "0.1"
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
 
-crds:
-  install: true
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
 
 webhook:
   enabled: true
-  certManager:
-    issuerRef:
-      name: letsencrypt-prod
-      kind: ClusterIssuer
 
 serviceMonitor:
   enabled: true
@@ -78,35 +98,17 @@ serviceMonitor:
 grafana:
   dashboards:
     enabled: true
-
-coredns:
-  integration:
-    enabled: true
 ```
 
-### Air-Gapped Environment
-
-```yaml
-operator:
-  image:
-    repository: my-registry.internal/astradns/operator
-    tag: "0.1.0"
-
-agent:
-  image:
-    repository: my-registry.internal/astradns/agent
-    tag: "0.1.0"
-  engineImages:
-    unbound: my-registry.internal/astradns/unbound:1.22
-
-imagePullSecrets:
-  - name: registry-credentials
-```
-
-### High-Traffic Nodes
+### High-Traffic Cluster (Central)
 
 ```yaml
 agent:
+  engineType: unbound
+  topology:
+    profile: central
+  deployment:
+    replicas: 5
   resources:
     requests:
       cpu: 250m
@@ -114,10 +116,25 @@ agent:
     limits:
       cpu: "1"
       memory: "1Gi"
-  logMode: errors-only   # Reduce log volume
+  logMode: sampled
+  logSampleRate: "0.05"
 ```
 
-## Upgrading
+## Validate After Install
+
+```bash
+# 1) Operator and agent are healthy
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=operator
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
+
+# 2) ConfigMap exists
+kubectl -n astradns-system get configmap astradns-agent-config
+
+# 3) DNS smoke test
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
+```
+
+## Upgrade
 
 ```bash
 helm upgrade astradns deploy/helm/astradns \
@@ -134,7 +151,7 @@ helm upgrade astradns deploy/helm/astradns \
       --dry-run --debug
     ```
 
-## Templating
+## Render Templates
 
 To inspect the rendered manifests without installing:
 
@@ -144,4 +161,4 @@ helm template astradns deploy/helm/astradns \
   -f my-values.yaml
 ```
 
-See the [Helm Values Reference](../reference/helm-values.md) for all available values.
+See the [Helm Values Reference](../reference/helm-values.md) for the full operational knobs.

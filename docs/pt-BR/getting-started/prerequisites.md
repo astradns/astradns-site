@@ -51,7 +51,7 @@ O agent se conecta a porta `5353` em cada no via `hostPort`. Nenhuma configuraca
 O agent se conecta ao endereco link-local `169.254.20.11:53` em cada no. Este modo requer:
 
 - `hostNetwork: true` no DaemonSet do agent (configurado automaticamente pelo Helm)
-- CoreDNS configurado para encaminhar consultas externas para `169.254.20.11` (automatizado via `coredns.integration.enabled=true`)
+- CoreDNS configurado para encaminhar consultas externas para `169.254.20.11` (automatizado via `clusterDNS.forwardExternalToAstraDNS.enabled=true`)
 
 ## RBAC
 

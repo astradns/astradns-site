@@ -54,16 +54,17 @@ graph LR
 ```
 
 1. **Operator** observa los CRDs (`DNSUpstreamPool`, `DNSCacheProfile`, `ExternalDNSPolicy`) y genera la configuración del motor en un ConfigMap.
-2. **Agent** se ejecuta como un DaemonSet en cada nodo, enrutando las consultas DNS a través de un motor DNS intercambiable (Unbound, CoreDNS o PowerDNS).
+2. **Agent** se ejecuta en topología `node-local` (DaemonSet) o `central` (Deployment + Service), enrutando consultas DNS por un motor intercambiable (`unbound`, `coredns`, `powerdns` o `bind`).
 3. Cada consulta se registra, se mide y se verifica su salud, sin modificar el código de su aplicación.
 
 ## Inicio Rápido
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns deploy/helm/astradns \
   --namespace astradns-system --create-namespace \
+  --set agent.engineType=unbound \
   --set agent.network.mode=linkLocal \
-  --set coredns.integration.enabled=true
+  --set clusterDNS.forwardExternalToAstraDNS.enabled=true
 ```
 
 Luego cree su primer pool de upstreams:
@@ -84,6 +85,12 @@ spec:
   loadBalancing:
     strategy: round-robin
 ```
+
+## Que Elegir Después
+
+- **Perfil de topología**: use `node-local` para menor latencia, o `central` para réplicas compartidas y menor costo por nodo.
+- **Motor**: configure solo `agent.engineType`; el chart fija automáticamente las imágenes oficiales por motor.
+- **Cómo ejecutar y probar**: siga el flujo en Contribuir para stack local y checks equivalentes a CI.
 
 [:octicons-arrow-right-24: Primeros Pasos](getting-started/index.md){ .md-button .md-button--primary }
 [:octicons-book-24: Arquitectura](architecture/index.md){ .md-button }

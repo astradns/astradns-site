@@ -8,7 +8,7 @@ O AstraDNS consiste em quatro componentes principais distribuidos em dois planos
 |-------------|-------|
 | Kind | Deployment |
 | Replicas | 1 (com eleicao de lider para HA) |
-| Imagem | `astradns/operator` |
+| Imagem | `ghcr.io/astradns/astradns-operator:v<appVersion>` |
 | Portas | 8081 (saude), 8443 (metricas), 9443 (webhook) |
 
 O operator executa tres controllers:
@@ -42,7 +42,7 @@ Valida referencias cruzadas com pools de upstreams e perfis de cache. Define con
 | Propriedade | Valor |
 |-------------|-------|
 | Kind | DaemonSet |
-| Imagem | `astradns/agent` |
+| Imagem | `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>` |
 | Portas | 5353 (DNS), 8080 (saude), 9153 (metricas) |
 
 O agent executa sete componentes em goroutines paralelas:
@@ -83,13 +83,14 @@ Consulte a [Referencia de CRDs](../reference/crds/index.md) para a documentacao 
 
 ## DNS Engine
 
-O engine e um subprocesso gerenciado pelo agent. Tres engines sao suportados:
+O engine e um subprocesso gerenciado pelo agent. Quatro engines sao suportados:
 
 | Engine | Arquivo de Configuracao | Metodo de Reload | Padrao |
 |--------|------------------------|------------------|--------|
 | **Unbound** | `unbound.conf` | `unbound-control reload` | Sim |
 | **CoreDNS** | `Corefile` | Plugin de auto-reload | Nao |
 | **PowerDNS Recursor** | `recursor.conf` | `rec_control reload-zones` | Nao |
+| **BIND** | `named.conf` | `rndc reconfig` | Nao |
 
 Todos os engines implementam a mesma interface Go:
 

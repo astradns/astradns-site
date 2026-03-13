@@ -1,79 +1,46 @@
 # Selecao de Engine
 
-O AstraDNS suporta tres engines DNS. O engine e selecionado no momento da implantacao via a variavel de ambiente `ASTRADNS_ENGINE_TYPE` (ou o valor Helm `agent.engineType`).
+O AstraDNS suporta quatro engines DNS. A escolha e feita com um unico valor Helm: `agent.engineType`.
 
-## Comparacao
+## Engines Suportados
 
-| Recurso | Unbound | CoreDNS | PowerDNS Recursor |
-|---------|---------|---------|-------------------|
-| **Tipo** | Resolver recursivo | Autoritativo + encaminhamento | Resolver recursivo |
-| **Linguagem** | C | Go | C++ |
-| **Consumo de memoria** | ~20-50 MB | ~30-60 MB | ~40-80 MB |
-| **Desempenho de cache** | Excelente | Bom | Bom |
-| **Validacao DNSSEC** | Integrada | Baseada em plugin | Integrada |
-| **Reload de config** | `unbound-control reload` | Plugin de auto-reload | `rec_control reload-zones` |
-| **Maturidade** | 20+ anos | 10+ anos | 15+ anos |
-| **Padrao** | Sim | Nao | Nao |
+| Engine | Uso tipico | Observacao |
+|---|---|---|
+| `unbound` | Padrao para a maioria dos clusters | Bom comportamento de cache recursivo e operacao simples |
+| `coredns` | Times ja padronizados em CoreDNS | Consistencia operacional com o ecossistema CoreDNS |
+| `powerdns` | Ambientes centrados em PowerDNS | Reaproveita praticas e tooling ja usados no ambiente |
+| `bind` | Ambientes centrados em BIND | Bom encaixe para times com operacao consolidada em BIND |
 
-## Quando Usar Cada Um
+## Politica de Imagens (Helm)
 
-### Unbound (padrao)
+O chart gerencia repositorio e versao de imagem automaticamente:
 
-Melhor para a maioria das implantacoes. O Unbound oferece:
+- Imagem do operator: `ghcr.io/astradns/astradns-operator:v<appVersion>`
+- Imagem do agent: `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>`
 
-- Cache de referencia com otimizacao agressiva de NSEC
-- Menor consumo de memoria
-- Configuracao mais simples (arquivo unico)
-- Testado em producao por mais de 20 anos
+Assim, operator + agent + documentacao seguem a mesma linha de release. O usuario nao precisa escolher tags de imagem.
 
-```yaml
-# values.yaml
-agent:
-  engineType: unbound
-```
-
-### CoreDNS
-
-Escolha CoreDNS quando:
-
-- Sua equipe ja opera o CoreDNS e deseja uma unica tecnologia DNS
-- Voce precisa de plugins personalizados (ex.: service discovery, middleware customizado)
-- Voce deseja integracao de observabilidade nativa em Go
-
-```yaml
-# values.yaml
-agent:
-  engineType: coredns
-  engineImages:
-    coredns: coredns/coredns:1.12.1
-```
-
-### PowerDNS Recursor
-
-Escolha PowerDNS quando:
-
-- Voce precisa de scripting Lua para zonas de politica de resposta (RPZ)
-- Sua organizacao padroniza no PowerDNS
-- Voce precisa de suporte avancado a EDNS Client Subnet
-
-```yaml
-# values.yaml
-agent:
-  engineType: powerdns
-  engineImages:
-    powerdns: powerdns/pdns-recursor:5.2
-```
-
-## Imagens do Engine
-
-Por padrao, o container do agent ja vem com o Unbound pre-instalado. Para outros engines, voce deve fornecer uma imagem personalizada ou especificar a imagem do engine:
+## Como Escolher o Engine
 
 ```yaml
 agent:
-  engineImages:
-    coredns: "my-registry/coredns:1.12.1"
-    powerdns: "my-registry/pdns-recursor:5.2"
+  engineType: unbound # unbound | coredns | powerdns | bind
 ```
 
-!!! warning
-    A imagem padrao do agent inclui apenas os binarios do Unbound. Usar `engineType: coredns` ou `engineType: powerdns` sem fornecer a imagem do engine ou uma imagem personalizada do agent resultara em falha na inicializacao.
+### Guia pratico
+
+- Comece com `unbound`, salvo se voce ja tiver padrao organizacional claro para outro engine.
+- Use `coredns`, `powerdns` ou `bind` quando seu time ja opera esse stack com playbooks e monitoracao consolidados.
+- Mantenha um engine por ambiente; faca trocas em janela controlada.
+
+## Validar o Engine Selecionado
+
+```bash
+# Engine propagado para o operator
+kubectl -n astradns-system get deploy astradns-operator \
+  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="ASTRADNS_ENGINE_TYPE")].value}'
+
+# Variante de imagem do agent selecionada pelo Helm
+kubectl -n astradns-system get ds astradns-agent \
+  -o jsonpath='{.spec.template.spec.containers[0].image}'
+```

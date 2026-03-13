@@ -5,72 +5,92 @@
 ### A Partir do Chart Local
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns deploy/helm/astradns \
   --namespace astradns-system \
   --create-namespace
 ```
 
+### Escolha do Engine DNS
+
+A unica escolha de engine que o usuario precisa fazer e `agent.engineType`.
+
+```bash
+helm upgrade --install astradns deploy/helm/astradns \
+  --namespace astradns-system \
+  --create-namespace \
+  --set agent.engineType=unbound
+```
+
+Valores suportados: `unbound`, `coredns`, `powerdns`, `bind`.
+
+!!! info "Politica de imagens"
+    O chart fixa automaticamente as imagens oficiais:
+    - `ghcr.io/astradns/astradns-operator:v<appVersion>`
+    - `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>`
+
 ### Com Valores Personalizados
 
 ```bash
-helm install astradns deploy/helm/astradns \
+helm upgrade --install astradns deploy/helm/astradns \
   --namespace astradns-system \
   --create-namespace \
   -f my-values.yaml
 ```
 
-## Configuracoes Comuns
+## Perfis de Topologia
 
-### Minima (Desenvolvimento)
+### Node-Local (padrao)
 
 ```yaml
-operator:
-  replicas: 1
 agent:
+  topology:
+    profile: node-local
   engineType: unbound
   network:
-    mode: hostPort
-crds:
-  install: true
+    mode: linkLocal
+
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
 ```
 
-### Producao
+### Central
+
+```yaml
+agent:
+  topology:
+    profile: central
+  engineType: unbound
+  deployment:
+    replicas: 3
+  dnsService:
+    type: ClusterIP
+    sessionAffinity: ClientIP
+```
+
+## Perfis Comuns
+
+### Baseline de Producao
 
 ```yaml
 operator:
-  replicas: 1
   leaderElect: true
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 
 agent:
   engineType: unbound
+  topology:
+    profile: node-local
   network:
     mode: linkLocal
   logMode: sampled
   logSampleRate: "0.1"
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
 
-crds:
-  install: true
+clusterDNS:
+  forwardExternalToAstraDNS:
+    enabled: true
 
 webhook:
   enabled: true
-  certManager:
-    issuerRef:
-      name: letsencrypt-prod
-      kind: ClusterIssuer
 
 serviceMonitor:
   enabled: true
@@ -78,35 +98,17 @@ serviceMonitor:
 grafana:
   dashboards:
     enabled: true
-
-coredns:
-  integration:
-    enabled: true
 ```
 
-### Ambiente Air-Gapped
-
-```yaml
-operator:
-  image:
-    repository: my-registry.internal/astradns/operator
-    tag: "0.1.0"
-
-agent:
-  image:
-    repository: my-registry.internal/astradns/agent
-    tag: "0.1.0"
-  engineImages:
-    unbound: my-registry.internal/astradns/unbound:1.22
-
-imagePullSecrets:
-  - name: registry-credentials
-```
-
-### Nos de Alto Trafego
+### Cluster de Alto Trafego (Central)
 
 ```yaml
 agent:
+  engineType: unbound
+  topology:
+    profile: central
+  deployment:
+    replicas: 5
   resources:
     requests:
       cpu: 250m
@@ -114,7 +116,22 @@ agent:
     limits:
       cpu: "1"
       memory: "1Gi"
-  logMode: errors-only   # Reduzir volume de logs
+  logMode: sampled
+  logSampleRate: "0.05"
+```
+
+## Validacao Pos-Instalacao
+
+```bash
+# 1) Operator e agent saudaveis
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=operator
+kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
+
+# 2) ConfigMap existe
+kubectl -n astradns-system get configmap astradns-agent-config
+
+# 3) Smoke test DNS
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
 ```
 
 ## Atualizacao
