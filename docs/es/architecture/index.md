@@ -22,9 +22,9 @@ graph TB
         CM[ConfigMap<br/>config.json]
     end
 
-    subgraph "Plano de Datos (por nodo)"
-        Agent[AstraDNS Agent<br/>DaemonSet]
-        Engine[Motor DNS<br/>Unbound / CoreDNS / PowerDNS]
+    subgraph "Plano de Datos"
+        Agent[AstraDNS Agent<br/>DaemonSet / Deployment]
+        Engine[Motor DNS<br/>Unbound / CoreDNS / PowerDNS / BIND]
         Proxy[Proxy DNS<br/>:5353]
         Metrics[Métricas<br/>:9153]
         Health[Salud<br/>:8080]
@@ -47,13 +47,13 @@ Un Deployment de una sola réplica que:
 
 1. Observa tres CRDs en busca de cambios de configuración
 2. Ensambla un `EngineConfig` agnóstico del motor a partir de las especificaciones de los CRDs
-3. Renderiza configuración específica del motor (conf de Unbound, Corefile o recursor.conf)
+3. Renderiza configuración específica del motor (conf de Unbound, Corefile, recursor.conf o named.conf)
 4. Escribe la configuración renderizada en un ConfigMap
 5. Establece condiciones de estado en los CRDs (Ready, Superseded, InvalidSpec)
 
 ### Plano de Datos: Agent
 
-Un DaemonSet que se ejecuta en cada nodo y que:
+Una carga que corre como DaemonSet (`node-local`) o Deployment (`central`) y que:
 
 1. Inicia un motor DNS intercambiable como subproceso (por defecto: Unbound)
 2. Ejecuta un proxy DNS en el puerto 5353 que intercepta todas las consultas

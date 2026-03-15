@@ -14,7 +14,7 @@ sequenceDiagram
 
     Pod->>CoreDNS: A api.stripe.com?
     Note over CoreDNS: Internal zone? No.
-    CoreDNS->>Proxy: Forward to 169.254.20.11:53
+    CoreDNS->>Proxy: Forward to 169.254.20.11:5353
     Proxy->>Proxy: Rate limit check
     Proxy->>Proxy: Domain filter check
     alt Denied by filter
@@ -59,13 +59,13 @@ Pod → CoreDNS → Node:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 
 ### linkLocal (recommended)
 
-The agent binds to the link-local address `169.254.20.11:53` using `hostNetwork: true`.
+The agent binds to the link-local address `169.254.20.11:5353` using `hostNetwork: true`.
 
 ```
-Pod → CoreDNS → 169.254.20.11:53 (agent) → 127.0.0.1:5354 (engine) → upstream
+Pod → CoreDNS → 169.254.20.11:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 ```
 
-- Standard port 53 (no special client configuration)
+- Stable link-local address and port for every node
 - Consistent address across all nodes
 - CoreDNS forwards to a single address regardless of node IP
 - Follows the established NodeLocal DNS Cache pattern
@@ -93,7 +93,7 @@ Each node maintains its own cache. There is no cross-node cache sharing.
 
 | Failure | Behavior | Recovery |
 |---------|----------|----------|
-| Agent pod crashes | CoreDNS fails over to `/etc/resolv.conf` (sequential policy) | Agent restart via DaemonSet (~seconds) |
+| Agent pod crashes | CoreDNS fails over to `/etc/resolv.conf` (sequential policy) | Agent restart via DaemonSet/Deployment (~seconds) |
 | Engine subprocess dies | Proxy serves stale cache or resolves via upstream directly | Engine supervisor restarts within 5s |
 | Engine down + no cache | Proxy queries upstreams directly, bypassing engine | Transparent — no client impact |
 | Engine down + all upstreams down | SERVFAIL for non-cached queries | Automatic when engine or upstream recovers |

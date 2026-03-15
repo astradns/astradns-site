@@ -22,9 +22,9 @@ graph TB
         CM[ConfigMap<br/>config.json]
     end
 
-    subgraph "Data Plane (per node)"
-        Agent[AstraDNS Agent<br/>DaemonSet]
-        Engine[DNS Engine<br/>Unbound / CoreDNS / PowerDNS]
+    subgraph "Data Plane"
+        Agent[AstraDNS Agent<br/>DaemonSet / Deployment]
+        Engine[DNS Engine<br/>Unbound / CoreDNS / PowerDNS / BIND]
         Proxy[DNS Proxy<br/>:5353]
         Metrics[Metrics<br/>:9153]
         Health[Health<br/>:8080]
@@ -47,13 +47,13 @@ A single-replica Deployment that:
 
 1. Watches three CRDs for configuration changes
 2. Assembles an engine-agnostic `EngineConfig` from CRD specs
-3. Renders engine-specific configuration (Unbound conf, Corefile, or recursor.conf)
+3. Renders engine-specific configuration (Unbound conf, Corefile, recursor.conf, or named.conf)
 4. Writes the rendered config to a ConfigMap
 5. Sets status conditions on CRDs (Ready, Superseded, InvalidSpec)
 
 ### Data Plane: Agent
 
-A DaemonSet running on every node that:
+A workload running as DaemonSet (`node-local`) or Deployment (`central`) that:
 
 1. Starts a pluggable DNS engine as a subprocess (default: Unbound)
 2. Runs a DNS proxy on port 5353 that intercepts all queries

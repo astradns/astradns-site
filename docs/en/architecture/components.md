@@ -41,7 +41,7 @@ Validates cross-references to upstream pools and cache profiles. Sets `Validated
 
 | Property | Value |
 |----------|-------|
-| Kind | DaemonSet |
+| Kind | DaemonSet (`node-local`) / Deployment (`central`) |
 | Image | `ghcr.io/astradns/astradns-agent:v<appVersion>-<engine>` |
 | Ports | 5353 (DNS), 8080 (health), 9153 (metrics) |
 
@@ -100,6 +100,8 @@ type Engine interface {
     Start(ctx context.Context) error
     Reload(ctx context.Context) error
     Stop(ctx context.Context) error
+    Capabilities() EngineCapabilities
+    HealthStatus(ctx context.Context) (EngineHealthStatus, error)
     HealthCheck(ctx context.Context) (bool, error)
     Name() EngineType
 }

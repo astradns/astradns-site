@@ -53,7 +53,8 @@ kubectl run dns-test --rm -it --restart=Never \
   --image=busybox:1.37 -- nslookup example.com
 
 # Check metrics
-kubectl port-forward -n astradns-system ds/astradns-agent 9153:9153 &
+AGENT_POD="$(kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent -o jsonpath='{.items[0].metadata.name}')"
+kubectl port-forward -n astradns-system "pod/${AGENT_POD}" 9153:9153 &
 curl -s http://localhost:9153/metrics | grep astradns_queries_total
 ```
 

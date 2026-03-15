@@ -115,7 +115,7 @@ kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile\.astra
 
 # 3) Job de patch executou
 kubectl -n astradns-system get jobs | grep coredns-patch
-kubectl -n astradns-system logs job/<release>-astradns-coredns-patch
+kubectl -n astradns-system logs job/<helm-fullname>-coredns-patch
 
 # 4) Smoke test DNS
 kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
@@ -124,7 +124,7 @@ kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup e
 Em `central`, valide também o Service:
 
 ```bash
-kubectl -n astradns-system get svc <release>-astradns-agent-dns -o wide
+kubectl -n astradns-system get svc <helm-fullname>-agent-dns -o wide
 ```
 
 ---

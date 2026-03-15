@@ -8,7 +8,9 @@
 helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system \
   --create-namespace \
-  --set agent.engineType=unbound
+  --set agent.engineType=unbound \
+  --set agent.network.mode=linkLocal \
+  --set clusterDNS.forwardExternalToAstraDNS.enabled=true
 ```
 
 ### Instalación para Producción

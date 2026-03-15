@@ -19,7 +19,8 @@ kubectl get configmap astradns-agent-config -n astradns-system \
   -o jsonpath='{.data.config\.json}' | jq .
 
 # 4. Are metrics flowing?
-kubectl port-forward -n astradns-system ds/astradns-agent 9153:9153 &
+AGENT_POD="$(kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent -o jsonpath='{.items[0].metadata.name}')"
+kubectl port-forward -n astradns-system "pod/${AGENT_POD}" 9153:9153 &
 curl -s http://localhost:9153/metrics | grep astradns_queries_total
 
 # 5. Is the ServiceMonitor scraping?
@@ -39,7 +40,8 @@ kubectl get servicemonitor -n astradns-system
 kubectl logs -n astradns-system -l app.kubernetes.io/component=agent --tail=50
 
 # Check if engine is running
-kubectl exec -n astradns-system ds/astradns-agent -- ps aux | grep -E 'unbound|coredns|pdns'
+AGENT_POD="$(kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent -o jsonpath='{.items[0].metadata.name}')"
+kubectl exec -n astradns-system "pod/${AGENT_POD}" -- ps aux | grep -E 'unbound|coredns|pdns|named'
 
 # Check readiness
 kubectl get pods -n astradns-system -l app.kubernetes.io/component=agent \
@@ -67,14 +69,14 @@ kubectl run dns-debug --rm -it --restart=Never \
 kubectl get configmap coredns -n kube-system -o yaml | grep -A2 forward
 
 # Check the patch job status
-kubectl get jobs -n kube-system | grep astradns
-kubectl logs -n kube-system job/astradns-coredns-patch
+kubectl get jobs -n astradns-system | grep coredns-patch
+kubectl logs -n astradns-system job/<helm-fullname>-coredns-patch
 ```
 
 **Resolución:**
 
-1. Re-ejecute el job de parcheo: `kubectl delete job astradns-coredns-patch -n kube-system` y luego `helm upgrade ...`
-2. Parcheo manual: edite el ConfigMap de CoreDNS para agregar `forward . 169.254.20.11`
+1. Re-ejecute el job de parcheo: `kubectl delete job -n astradns-system <helm-fullname>-coredns-patch` y luego ejecute `helm upgrade ... --set clusterDNS.forwardExternalToAstraDNS.enabled=true`
+2. Parcheo manual: edite el ConfigMap de CoreDNS para agregar `forward . 169.254.20.11:5353`
 3. Reinicie CoreDNS: `kubectl rollout restart deployment coredns -n kube-system`
 
 ### El webhook bloquea la creación legítima de pools
@@ -152,8 +154,10 @@ Si AstraDNS está causando problemas de DNS en todo el clúster y necesita resta
 
 ```bash
 # Revert CoreDNS to original config
-kubectl get configmap coredns-backup-astradns -n kube-system \
-  -o jsonpath='{.data.Corefile}' > /tmp/original-corefile
+kubectl get configmap coredns -n kube-system \
+  -o jsonpath='{.data.Corefile\.astradns\.backup}' > /tmp/original-corefile
+
+test -s /tmp/original-corefile
 
 kubectl create configmap coredns -n kube-system \
   --from-file=Corefile=/tmp/original-corefile \

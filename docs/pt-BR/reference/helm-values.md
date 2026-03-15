@@ -1,6 +1,6 @@
 # Referência de Valores Helm
 
-Esta página documenta os valores mais importantes de `deploy/helm/astradns/values.yaml` com foco operacional.
+Esta página documenta os valores mais importantes do chart Helm do AstraDNS com foco operacional.
 
 !!! info "Escopo"
     Nem todos os campos do chart são reproduzidos aqui. Esta referência cobre os knobs que mudam comportamento de deploy, tráfego DNS, segurança e observabilidade.

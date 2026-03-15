@@ -23,6 +23,8 @@ operator:
       effect: NoSchedule
 
 agent:
+  topology:
+    profile: node-local
   engineType: unbound
   network:
     mode: linkLocal
@@ -47,8 +49,8 @@ grafana:
   dashboards:
     enabled: true
 
-coredns:
-  integration:
+clusterDNS:
+  forwardExternalToAstraDNS:
     enabled: true
 
 crds:
@@ -111,14 +113,15 @@ kubectl run dns-test --rm -it --restart=Never \
 ### 6. Verificar as Metricas
 
 ```bash
-kubectl port-forward -n astradns-system ds/astradns-agent 9153:9153 &
+AGENT_POD="$(kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent -o jsonpath='{.items[0].metadata.name}')"
+kubectl port-forward -n astradns-system "pod/${AGENT_POD}" 9153:9153 &
 curl -s http://localhost:9153/metrics | grep astradns_queries_total
 ```
 
 ### 7. Verificar os Endpoints de Saude
 
 ```bash
-kubectl port-forward -n astradns-system ds/astradns-agent 8080:8080 &
+kubectl port-forward -n astradns-system "pod/${AGENT_POD}" 8080:8080 &
 curl -s http://localhost:8080/healthz   # Deve retornar 200
 curl -s http://localhost:8080/readyz    # Deve retornar 200
 ```
@@ -127,7 +130,7 @@ curl -s http://localhost:8080/readyz    # Deve retornar 200
 
 | SLO | Meta | Medicao |
 |-----|------|---------|
-| Tempo de instalacao | < 5 minutos | Tempo desde `helm install` ate todos os pods Running |
+| Tempo de instalacao | < 5 minutos | Tempo desde `helm upgrade --install` ate todos os pods Running |
 | Latencia DNS p95 | <= baseline | `histogram_quantile(0.95, rate(astradns_upstream_latency_seconds_bucket[5m]))` |
 | Taxa de acerto de cache | > 30% | `rate(astradns_cache_hits_total[1h]) / (hits + misses)` |
 | Tempo de recuperacao | < 30 segundos | Tempo desde o reinicio do pod ate Ready |

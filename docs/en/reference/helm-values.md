@@ -1,6 +1,6 @@
 # Helm Values Reference
 
-This page documents the most relevant knobs from `deploy/helm/astradns/values.yaml` with an operational focus.
+This page documents the most relevant knobs from the AstraDNS Helm chart values with an operational focus.
 
 !!! info "Scope"
     This is a practical reference, not a full verbatim dump of the chart. It highlights values that change deployment shape, DNS routing behavior, security posture, and observability.

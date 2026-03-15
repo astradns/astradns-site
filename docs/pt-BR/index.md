@@ -11,7 +11,7 @@ hide:
 
 Clusters Kubernetes fazem milhares de consultas DNS externas a cada minuto -- para registros de pacotes, APIs SaaS, bancos de dados e serviços de terceiros. Hoje, essas consultas saem do cluster com **zero visibilidade**, **nenhum controle de segurança** e **nenhum cache**.
 
-O AstraDNS implanta um plano de resolução DNS gerenciado em cada nó, dando às equipes de plataforma controle total sobre a resolução DNS externa.
+O AstraDNS implanta um plano de resolução DNS gerenciado em topologia `node-local` (por nó) ou `central`, dando às equipes de plataforma controle total sobre a resolução DNS externa.
 
 <div class="grid cards" markdown>
 
@@ -37,7 +37,7 @@ O AstraDNS implanta um plano de resolução DNS gerenciado em cada nó, dando à
 
     ---
 
-    Totalmente declarativo via CRDs. Instale com um único `helm install`, configure com YAML. Sem sidecars, sem regras iptables, sem alterações no código.
+    Totalmente declarativo via CRDs. Instale com um único `helm upgrade --install`, configure com YAML. Sem sidecars, sem regras iptables, sem alterações no código.
 
 </div>
 
@@ -62,7 +62,9 @@ graph LR
 ```bash
 helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system --create-namespace \
-  --set agent.engineType=unbound
+  --set agent.engineType=unbound \
+  --set agent.network.mode=linkLocal \
+  --set clusterDNS.forwardExternalToAstraDNS.enabled=true
 ```
 
 Em seguida, crie seu primeiro pool de upstreams:

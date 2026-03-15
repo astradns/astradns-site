@@ -64,7 +64,7 @@ Por isso, a recomendação é manter somente:
 No modo `node-local`, cada nó elegível roda seu próprio Agent.
 
 ```text
-Pod -> CoreDNS -> 169.254.20.11:53 (Agent local) -> Engine -> Upstream
+Pod -> CoreDNS -> 169.254.20.11:5353 (Agent local) -> Engine -> Upstream
 ```
 
 ### Configuração mínima
@@ -197,7 +197,7 @@ kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}'
 kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
 
 # 3) Service DNS (somente central)
-kubectl -n astradns-system get svc <release>-astradns-agent-dns
+kubectl -n astradns-system get svc <helm-fullname>-agent-dns
 
 # 4) Smoke test de resolução
 kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com

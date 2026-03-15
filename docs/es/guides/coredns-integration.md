@@ -115,7 +115,7 @@ kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile\.astra
 
 # 3) Ejecución del Job de patch
 kubectl -n astradns-system get jobs | grep coredns-patch
-kubectl -n astradns-system logs job/<release>-astradns-coredns-patch
+kubectl -n astradns-system logs job/<helm-fullname>-coredns-patch
 
 # 4) Prueba de humo DNS
 kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com
@@ -124,7 +124,7 @@ kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup e
 En `central`, valida también el endpoint del Service:
 
 ```bash
-kubectl -n astradns-system get svc <release>-astradns-agent-dns -o wide
+kubectl -n astradns-system get svc <helm-fullname>-agent-dns -o wide
 ```
 
 ---

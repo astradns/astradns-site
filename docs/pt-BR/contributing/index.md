@@ -82,7 +82,7 @@ make test-e2e
 ```bash
 kind create cluster --name astradns-dev
 
-helm upgrade --install astradns deploy/helm/astradns \
+helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --namespace astradns-system --create-namespace \
   --set agent.engineType=unbound \
   --set agent.network.mode=linkLocal \

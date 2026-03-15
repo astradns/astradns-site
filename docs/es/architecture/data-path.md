@@ -14,7 +14,7 @@ sequenceDiagram
 
     Pod->>CoreDNS: A api.stripe.com?
     Note over CoreDNS: Internal zone? No.
-    CoreDNS->>Agent: Forward to 169.254.20.11:53
+    CoreDNS->>Agent: Forward to 169.254.20.11:5353
     Agent->>Agent: Log query, start timer
     Agent->>Engine: Forward to 127.0.0.1:5354
     alt Cache hit
@@ -46,13 +46,13 @@ Pod → CoreDNS → Node:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 
 ### linkLocal (recomendado)
 
-El agent se enlaza a la dirección link-local `169.254.20.11:53` usando `hostNetwork: true`.
+El agent se enlaza a la dirección link-local `169.254.20.11:5353` usando `hostNetwork: true`.
 
 ```
-Pod → CoreDNS → 169.254.20.11:53 (agent) → 127.0.0.1:5354 (engine) → upstream
+Pod → CoreDNS → 169.254.20.11:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 ```
 
-- Puerto estándar 53 (sin configuración especial en el cliente)
+- Dirección y puerto estables en todos los nodos
 - Dirección consistente en todos los nodos
 - CoreDNS reenvía a una sola dirección independientemente de la IP del nodo
 - Sigue el patrón establecido de NodeLocal DNS Cache
@@ -80,7 +80,7 @@ Cada nodo mantiene su propio caché. No hay caché compartido entre nodos.
 
 | Falla | Comportamiento | Recuperación |
 |-------|---------------|--------------|
-| El pod del agent se cae | CoreDNS reintenta con el upstream de respaldo | Reinicio del agent mediante DaemonSet |
+| El pod del agent se cae | CoreDNS reintenta con el upstream de respaldo | Reinicio del agent mediante DaemonSet/Deployment |
 | El subproceso del motor muere | `/healthz` devuelve 503, el pod se reinicia | Automática mediante liveness probe |
 | Upstream inalcanzable | El health checker lo marca como no saludable, se devuelve SERVFAIL | Automática cuando el upstream se recupera |
 | ConfigMap inválido | La recarga falla, se mantiene la configuración anterior | Corrija el CRD, el operator re-renderiza |

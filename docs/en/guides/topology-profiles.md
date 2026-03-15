@@ -64,7 +64,7 @@ So the recommended model is intentionally compact:
 In `node-local`, each eligible node runs its own Agent.
 
 ```text
-Pod -> CoreDNS -> 169.254.20.11:53 (local Agent) -> Engine -> Upstream
+Pod -> CoreDNS -> 169.254.20.11:5353 (local Agent) -> Engine -> Upstream
 ```
 
 ### Minimal configuration
@@ -197,7 +197,7 @@ kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}'
 kubectl -n astradns-system get pods -l app.kubernetes.io/component=agent
 
 # 3) DNS Service exists (central only)
-kubectl -n astradns-system get svc <release>-astradns-agent-dns
+kubectl -n astradns-system get svc <helm-fullname>-agent-dns
 
 # 4) DNS smoke test from workload perspective
 kubectl run dns-test --rm -it --restart=Never --image=busybox:1.37 -- nslookup example.com

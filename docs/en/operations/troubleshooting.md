@@ -36,7 +36,7 @@ kubectl describe pod -n astradns-system -l app.kubernetes.io/component=agent
 |-------------|-------|-----|
 | `exec: "unbound": not found` | Wrong engine type for image | Match `agent.engineType` to the engine binary in the image |
 | `listen tcp :5353: bind: address already in use` | Port conflict | Check for other services on port 5353 |
-| `open /etc/astradns/config/config.json: no such file` | ConfigMap not mounted | Verify ConfigMap exists and is referenced in DaemonSet |
+| `open /etc/astradns/config/config.json: no such file` | ConfigMap not mounted | Verify ConfigMap exists and is referenced in the agent workload (DaemonSet/Deployment) |
 
 ### Pool shows Ready=False, Reason=Superseded
 
