@@ -77,6 +77,10 @@ agent:
     sessionAffinityTimeoutSeconds: 1800
 ```
 
+!!! note "Link-local default, not a fixed contract"
+    `169.254.20.11` is the chart default for `agent.network.linkLocalIP`, not a universal hardcoded value.
+    If you change it, keep `clusterDNS.forwardExternalToAstraDNS.forwardTarget` aligned (`<linkLocalIP>:5353`) in `node-local` profile.
+
 ### Important rules
 
 - `profile=central` cannot use `network.mode=linkLocal`.
@@ -96,7 +100,7 @@ clusterDNS:
     namespace: kube-system
     configMapName: coredns
     rolloutDeployment: coredns
-    forwardTarget: 169.254.20.11:5353
+    forwardTarget: 169.254.20.11:5353  # node-local default; keep aligned with linkLocalIP
     fallbackUpstream: /etc/resolv.conf
 ```
 

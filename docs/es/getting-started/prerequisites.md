@@ -48,10 +48,11 @@ El agent se enlaza al puerto `5353` en cada nodo mediante `hostPort`. No se nece
 
 ### Modo linkLocal (recomendado para producción)
 
-El agent se enlaza a la dirección link-local `169.254.20.11:5353` en cada nodo. Este modo requiere:
+Por defecto, el agent se enlaza a la dirección link-local `169.254.20.11:5353` en cada nodo. Este modo requiere:
 
 - `hostNetwork: true` en el DaemonSet del agent (configurado automáticamente por Helm)
 - CoreDNS configurado para reenviar consultas externas a `169.254.20.11:5353` (automatizado mediante `clusterDNS.forwardExternalToAstraDNS.enabled=true`)
+- Si personaliza `agent.network.linkLocalIP`, actualice `clusterDNS.forwardExternalToAstraDNS.forwardTarget` a `<linkLocalIP>:5353`
 
 ## RBAC
 

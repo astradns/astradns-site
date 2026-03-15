@@ -46,14 +46,14 @@ Pod -> CoreDNS -> No:5353 (agent) -> 127.0.0.1:5354 (engine) -> upstream
 
 ### linkLocal (recomendado)
 
-O agent se conecta ao endereco link-local `169.254.20.11:5353` usando `hostNetwork: true`.
+Por padrao, o agent se conecta ao endereco link-local `169.254.20.11:5353` usando `hostNetwork: true`.
 
 ```
-Pod -> CoreDNS -> 169.254.20.11:5353 (agent) -> 127.0.0.1:5354 (engine) -> upstream
+Pod -> CoreDNS -> <linkLocalIP>:5353 (agent) -> 127.0.0.1:5354 (engine) -> upstream
 ```
 
 - Endereco e porta estaveis em todos os nos
-- Endereco consistente em todos os nos
+- Endereco configurado consistente em todos os nos
 - CoreDNS encaminha para um unico endereco independente do IP do no
 - Segue o padrao estabelecido do NodeLocal DNS Cache
 

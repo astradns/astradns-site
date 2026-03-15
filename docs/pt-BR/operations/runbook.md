@@ -76,7 +76,7 @@ kubectl logs -n astradns-system job/<helm-fullname>-coredns-patch
 **Resolucao:**
 
 1. Re-execute o job de patch: `kubectl delete job -n astradns-system <helm-fullname>-coredns-patch` e depois rode `helm upgrade ... --set clusterDNS.forwardExternalToAstraDNS.enabled=true`
-2. Patch manual: edite o ConfigMap do CoreDNS para adicionar `forward . 169.254.20.11:5353`
+2. Patch manual: edite o ConfigMap do CoreDNS para adicionar `forward . <forward-target-configurado>` (no padrao linkLocal, `169.254.20.11:5353`)
 3. Reinicie o CoreDNS: `kubectl rollout restart deployment coredns -n kube-system`
 
 ### Webhook bloqueia criacao legitima de pool

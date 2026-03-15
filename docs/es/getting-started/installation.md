@@ -27,7 +27,7 @@ helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
 
 Esto habilita:
 
-- **Ruta de datos link-local** -- el agent se enlaza a `169.254.20.11` para DNS verdaderamente local al nodo
+- **Ruta de datos link-local** -- por defecto, el agent se enlaza a `169.254.20.11:5353` (ajústelo con `agent.network.linkLocalIP`)
 - **Integración con CoreDNS** -- parcheo automático del DNS del clúster para reenviar consultas externas
 - **Webhook de validación** -- impone un solo `DNSUpstreamPool` por namespace
 - **ServiceMonitor** -- scraping de Prometheus para métricas del operator y del agent

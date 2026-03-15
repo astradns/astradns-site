@@ -37,6 +37,10 @@ clusterDNS:
     fallbackUpstream: /etc/resolv.conf
 ```
 
+!!! note "Use el target link-local configurado"
+    `169.254.20.11` es el default del chart.
+    En `node-local`, mantenga `clusterDNS.forwardExternalToAstraDNS.forwardTarget` alineado con `agent.network.linkLocalIP` (`<linkLocalIP>:5353`).
+
 ### central con ClusterIP fija
 
 ```yaml

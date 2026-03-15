@@ -27,7 +27,7 @@ helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
 
 This enables:
 
-- **Link-local data path** — agent binds to `169.254.20.11` for true node-local DNS
+- **Link-local data path** — by default, agent binds to `169.254.20.11:5353` (override with `agent.network.linkLocalIP`)
 - **CoreDNS integration** — automatic patching of cluster DNS to forward external queries
 - **Validating webhook** — enforces one `DNSUpstreamPool` per namespace
 - **ServiceMonitor** — Prometheus scraping for operator and agent metrics

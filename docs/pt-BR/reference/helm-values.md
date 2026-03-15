@@ -77,6 +77,10 @@ agent:
     sessionAffinityTimeoutSeconds: 1800
 ```
 
+!!! note "Link-local e padrao, nao contrato fixo"
+    `169.254.20.11` e o valor padrao do chart para `agent.network.linkLocalIP`, nao um valor obrigatorio universal.
+    Se voce alterar esse IP, mantenha `clusterDNS.forwardExternalToAstraDNS.forwardTarget` alinhado (`<linkLocalIP>:5353`) no perfil `node-local`.
+
 ### Regras importantes
 
 - `profile=central` não aceita `network.mode=linkLocal`.
@@ -96,7 +100,7 @@ clusterDNS:
     namespace: kube-system
     configMapName: coredns
     rolloutDeployment: coredns
-    forwardTarget: 169.254.20.11:5353
+    forwardTarget: 169.254.20.11:5353  # padrao node-local; mantenha alinhado com linkLocalIP
     fallbackUpstream: /etc/resolv.conf
 ```
 

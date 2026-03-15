@@ -64,7 +64,7 @@ Por isso, a recomendação é manter somente:
 No modo `node-local`, cada nó elegível roda seu próprio Agent.
 
 ```text
-Pod -> CoreDNS -> 169.254.20.11:5353 (Agent local) -> Engine -> Upstream
+Pod -> CoreDNS -> <linkLocalIP>:5353 (Agent local) -> Engine -> Upstream
 ```
 
 ### Configuração mínima
@@ -75,13 +75,17 @@ agent:
     profile: node-local
   network:
     mode: linkLocal
-    linkLocalIP: 169.254.20.11
+    linkLocalIP: 169.254.20.11    # padrao
 
 clusterDNS:
   forwardExternalToAstraDNS:
     enabled: true
-    forwardTarget: 169.254.20.11:5353
+    forwardTarget: 169.254.20.11:5353  # padrao, manter alinhado com linkLocalIP
 ```
+
+!!! note "Padrao versus IP customizado"
+    `169.254.20.11` e o padrao do chart.
+    Se voce alterar `agent.network.linkLocalIP`, atualize `forwardTarget` para o mesmo host com porta `5353`.
 
 ### Quando escolher
 

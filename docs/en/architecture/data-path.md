@@ -59,14 +59,14 @@ Pod → CoreDNS → Node:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 
 ### linkLocal (recommended)
 
-The agent binds to the link-local address `169.254.20.11:5353` using `hostNetwork: true`.
+By default, the agent binds to the link-local address `169.254.20.11:5353` using `hostNetwork: true`.
 
 ```
-Pod → CoreDNS → 169.254.20.11:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
+Pod → CoreDNS → <linkLocalIP>:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 ```
 
 - Stable link-local address and port for every node
-- Consistent address across all nodes
+- Consistent configured address across all nodes
 - CoreDNS forwards to a single address regardless of node IP
 - Follows the established NodeLocal DNS Cache pattern
 

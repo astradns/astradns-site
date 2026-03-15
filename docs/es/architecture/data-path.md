@@ -46,14 +46,14 @@ Pod → CoreDNS → Node:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 
 ### linkLocal (recomendado)
 
-El agent se enlaza a la dirección link-local `169.254.20.11:5353` usando `hostNetwork: true`.
+Por defecto, el agent se enlaza a la dirección link-local `169.254.20.11:5353` usando `hostNetwork: true`.
 
 ```
-Pod → CoreDNS → 169.254.20.11:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
+Pod → CoreDNS → <linkLocalIP>:5353 (agent) → 127.0.0.1:5354 (engine) → upstream
 ```
 
 - Dirección y puerto estables en todos los nodos
-- Dirección consistente en todos los nodos
+- Dirección configurada consistente en todos los nodos
 - CoreDNS reenvía a una sola dirección independientemente de la IP del nodo
 - Sigue el patrón establecido de NodeLocal DNS Cache
 

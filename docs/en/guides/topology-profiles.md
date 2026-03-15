@@ -64,7 +64,7 @@ So the recommended model is intentionally compact:
 In `node-local`, each eligible node runs its own Agent.
 
 ```text
-Pod -> CoreDNS -> 169.254.20.11:5353 (local Agent) -> Engine -> Upstream
+Pod -> CoreDNS -> <linkLocalIP>:5353 (local Agent) -> Engine -> Upstream
 ```
 
 ### Minimal configuration
@@ -75,13 +75,17 @@ agent:
     profile: node-local
   network:
     mode: linkLocal
-    linkLocalIP: 169.254.20.11
+    linkLocalIP: 169.254.20.11    # default
 
 clusterDNS:
   forwardExternalToAstraDNS:
     enabled: true
-    forwardTarget: 169.254.20.11:5353
+    forwardTarget: 169.254.20.11:5353  # default, keep aligned with linkLocalIP
 ```
+
+!!! note "Default vs custom link-local IP"
+    `169.254.20.11` is the chart default.
+    If you change `agent.network.linkLocalIP`, update `forwardTarget` to the same host and port `5353`.
 
 ### Best fit scenarios
 
