@@ -67,6 +67,8 @@ helm upgrade --install astradns oci://ghcr.io/astradns/helm-charts/astradns \
   --set clusterDNS.forwardExternalToAstraDNS.enabled=true
 ```
 
+Prefer browsing package metadata and versions on Artifact Hub: [AstraDNS Helm chart](https://artifacthub.io/packages/helm/astradns/astradns).
+
 Then create your first upstream pool:
 
 ```yaml
